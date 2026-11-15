@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Sunrise Institute Student ERP</title>
+<meta name="description" content="Sign in to the Sunrise Institute Student ERP with your name and roll number.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/login.css">
+</head>
+<body class="login-body">
+<main class="login">
+  <section class="login__card card" aria-labelledby="login-title">
+    <div class="login__brand">
+      <div class="brand__mark" aria-hidden="true">SM</div>
+      <div>
+        <strong>Sunrise Institute</strong>
+        <span>Student ERP</span>
+      </div>
+    </div>
+
+    <h1 id="login-title" data-login-title>Welcome back</h1>
+    <p class="text-muted" data-login-hint>Enter your name and roll number to continue.</p>
+
+    <form id="login-form" novalidate>
+      <div class="role-switch" role="radiogroup" aria-label="Sign in as">
+        <label class="role-switch__opt"><input type="radio" name="role" value="student" checked><span>Student</span></label>
+        <label class="role-switch__opt"><input type="radio" name="role" value="teacher"><span>Teacher</span></label>
+      </div>
+      <div class="field">
+        <label for="login-name">Name</label>
+        <input class="input" id="login-name" name="name" type="text" autocomplete="name" placeholder="e.g. Rahul Sharma" maxlength="60" required>
+        <small class="field__error" data-error-for="name" role="alert"></small>
+      </div>
+      <div class="field">
+        <label for="login-roll" data-id-label>Roll No.</label>
+        <input class="input" id="login-roll" name="roll" type="text" autocomplete="off" placeholder="e.g. CS-2101" maxlength="20" required>
+        <small class="field__error" data-error-for="roll" role="alert"></small>
+      </div>
+      <div class="field" data-subject-field hidden>
+        <label for="login-subject">Subject you teach</label>
+        <select class="input" id="login-subject" name="subject" disabled></select>
+        <small class="field__error" data-error-for="subject" role="alert"></small>
+      </div>
+      <div class="field" data-student-field hidden>
+        <label for="login-department">Department</label>
+        <select class="input" id="login-department" name="department" disabled></select>
+        <small class="field__error" data-error-for="department" role="alert"></small>
+      </div>
+      <div class="field" data-student-field hidden>
+        <label for="login-semester">Semester</label>
+        <select class="input" id="login-semester" name="semester" disabled></select>
+        <small class="field__error" data-error-for="semester" role="alert"></small>
+      </div>
+      <button class="btn btn--primary login__submit" type="submit" data-submit>Sign in</button>
+    </form>
+    <p class="login__switch" data-switch-wrap hidden>
+      <span data-switch-text></span>
+      <button class="login__link" type="button" data-switch-mode></button>
+    </p>
+    <p class="login__demo text-muted" data-demo></p>
+
+    <button class="icon-btn theme-toggle login__theme" type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+      <span class="theme-toggle__sun">☾</span><span class="theme-toggle__moon">☀</span>
+    </button>
+  </section>
+</main>
+<script src="data/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courses · Sunrise Institute Student ERP</title>
+<meta name="description" content="Course catalogue with faculty, credits, semester and enrolled student rosters.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/students.css">
+</head>
+<body>
+<div class="loader" data-loader>
+  <div class="loader__inner">
+    <div class="loader__mark">SM</div>
+    <strong>Sunrise Institute ERP</strong>
+    <div class="loader__bar"></div>
+  </div>
+</div>
+<div class="app">
+  <aside class="sidebar" data-sidebar aria-label="Sidebar"></aside>
+  <div class="scrim" data-scrim></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn hamburger" type="button" data-sidebar-toggle aria-label="Toggle navigation">☰</button>
+      <div class="topbar__titles">
+        <nav class="crumbs" data-breadcrumb aria-label="Breadcrumb"></nav>
+        <h1>Course Catalogue</h1>
+      </div>
+      <div class="topbar__actions">
+        <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+          <span class="theme-toggle__sun">☾</span><span class="theme-toggle__moon">☀</span>
+        </button>
+        <div class="user-chip">
+          <span class="avatar" aria-hidden="true">·</span>
+          <span class="user-chip__meta"><strong>Loading…</strong><span> </span></span>
+        </div>
+      </div>
+    </header>
+
+    <section class="card slide-up" style="margin-bottom:16px">
+      <div class="students-toolbar" style="margin-bottom:0">
+        <div class="search">
+          <span class="search__icon" aria-hidden="true">⌕</span>
+          <label class="sr-only" for="course-search">Search courses</label>
+          <input class="input" id="course-search" type="search" placeholder="Search by course, code or faculty…" data-search>
+        </div>
+        <label class="sr-only" for="filter-sem">Filter by semester</label>
+        <select class="input" id="filter-sem" data-filter-sem></select>
+        <label class="sr-only" for="filter-status">Filter by status</label>
+        <select class="input" id="filter-status" data-filter-status>
+          <option value="">All statuses</option><option>Ongoing</option><option>Upcoming</option><option>Completed</option>
+        </select>
+        <span class="students-toolbar__spacer"></span>
+        <button class="btn btn--primary" type="button" data-add-course>＋ Add course</button>
+      </div>
+      <p class="result-note" data-result-note aria-live="polite" style="margin:10px 0 0"></p>
+    </section>
+    <section class="grid course-grid stagger" data-course-grid aria-label="Courses"></section>
+
+  </main>
+</div>
+<script src="data/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/courses.js"></script>
+</body>
+</html>

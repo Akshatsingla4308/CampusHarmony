@@ -1,0 +1,41 @@
+/* login.css — sign-in page (uses tokens from style.css) */
+.login-body { min-height: 100vh; }
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+.login__card {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 28px 28px;
+}
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.login__brand strong { display: block; line-height: 1.2; }
+.login__brand span { font-size: 0.85rem; color: var(--text-muted); }
+.login__brand .brand__mark { flex: none; }
+.login__card h1 { margin: 0 0 4px; font-size: 1.5rem; }
+.login__card form { margin-top: 20px; }
+.login__submit { width: 100%; margin-top: 8px; justify-content: center; }
+.login__theme { position: absolute; top: 14px; right: 14px; }
+.field__error { display: block; min-height: 1.1em; margin-top: 4px; color: var(--bad-500); font-size: 0.8rem; }
+.input.is-invalid { border-color: var(--bad-500); }
+
+.role-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; margin-bottom: 16px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--surface-solid); }
+.role-switch__opt { position: relative; cursor: pointer; }
+.role-switch__opt input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.role-switch__opt span { display: block; padding: 9px 0; text-align: center; font-weight: 600; border-radius: var(--radius-sm); color: var(--text-muted); transition: background .2s, color .2s; }
+.role-switch__opt input:checked + span { background: var(--brand-600); color: #fff; }
+.role-switch__opt input:focus-visible + span { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.login__demo { margin: 16px 0 0; font-size: 0.8rem; text-align: center; }
+.login__switch { margin: 16px 0 0; text-align: center; font-size: 0.9rem; color: var(--text-muted); }
+.login__link { background: none; border: 0; padding: 0; font: inherit; font-weight: 600; color: var(--brand-600); cursor: pointer; text-decoration: underline; }
+.login__link:focus-visible { outline: 2px solid var(--brand-500); outline-offset: 2px; }
+.login__ok { color: var(--ok-500); font-weight: 600; }

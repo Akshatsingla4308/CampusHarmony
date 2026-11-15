@@ -1,0 +1,56 @@
+/* =========================================================
+   attendance.css — Attendance module
+   ========================================================= */
+
+.att-summary {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  margin-bottom: 18px;
+}
+.att-summary .stat__value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+}
+.table--attendance {
+  min-width: 980px;
+}
+.day-count {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.day-count small {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+.att-actions {
+  display: flex;
+  gap: 6px;
+}
+.btn--present {
+  color: var(--ok-500);
+  background: color-mix(in srgb, var(--ok-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--ok-500) 28%, transparent);
+}
+.btn--present:hover {
+  background: color-mix(in srgb, var(--ok-500) 20%, transparent);
+}
+.btn--absent {
+  color: var(--bad-500);
+  background: color-mix(in srgb, var(--bad-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--bad-500) 28%, transparent);
+}
+.btn--absent:hover {
+  background: color-mix(in srgb, var(--bad-500) 20%, transparent);
+}
+.row-flash {
+  animation: flash 0.7s var(--ease) both;
+}
+@keyframes flash {
+  0% {
+    background: color-mix(in srgb, var(--brand-500) 18%, transparent);
+  }
+  100% {
+    background: transparent;
+  }
+}

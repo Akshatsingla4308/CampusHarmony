@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard · Sunrise Institute Student ERP</title>
+<meta name="description" content="College ERP dashboard with student, attendance, course and marks statistics.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+<div class="loader" data-loader>
+  <div class="loader__inner">
+    <div class="loader__mark">SM</div>
+    <strong>Sunrise Institute ERP</strong>
+    <div class="loader__bar"></div>
+  </div>
+</div>
+<div class="app">
+  <aside class="sidebar" data-sidebar aria-label="Sidebar"></aside>
+  <div class="scrim" data-scrim></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn hamburger" type="button" data-sidebar-toggle aria-label="Toggle navigation">☰</button>
+      <div class="topbar__titles">
+        <nav class="crumbs" data-breadcrumb aria-label="Breadcrumb"></nav>
+        <h1>Teacher Dashboard</h1>
+      </div>
+      <div class="topbar__actions">
+        <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+          <span class="theme-toggle__sun">☾</span><span class="theme-toggle__moon">☀</span>
+        </button>
+        <div class="user-chip">
+          <span class="avatar" aria-hidden="true">·</span>
+          <span class="user-chip__meta"><strong>Loading…</strong><span> </span></span>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid stat-grid stagger" data-stats aria-label="Key statistics"></section>
+
+    <section class="grid dash-grid" style="margin-top:16px">
+      <div class="card">
+        <div class="panel__head"><div><h2>Attendance by department</h2><p>Average attendance of your students</p></div></div>
+        <div data-dept-chart></div>
+      </div>
+      <div class="card">
+        <div class="panel__head"><div><h2>Recent activity</h2><p>Latest actions in the ERP</p></div></div>
+        <div data-activity></div>
+      </div>
+    </section>
+
+    <section class="grid chart-grid" style="margin-top:16px">
+      <div class="card">
+        <div class="panel__head"><div><h2 data-subject-title>Score ranges</h2><p data-subject-sub>Marks of your subject</p></div></div>
+        <div data-subject-chart></div>
+      </div>
+      <div class="card">
+        <div class="panel__head"><div><h2>Grade distribution</h2><p data-grade-sub>Your subject only</p></div></div>
+        <div data-donut></div>
+      </div>
+      <div class="card">
+        <div class="panel__head"><div><h2>My courses</h2><p>Courses you teach</p></div></div>
+        <div data-deadlines></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="data/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/dashboard.js"></script>
+</body>
+</html>

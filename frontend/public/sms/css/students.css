@@ -1,0 +1,200 @@
+/* =========================================================
+   students.css — Students table, courses grid, marks table
+   ========================================================= */
+
+.students-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.students-toolbar__spacer {
+  flex: 1;
+}
+.result-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+.table--students {
+  min-width: 1080px;
+}
+.mono {
+  font-variant-numeric: tabular-nums;
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+.link-cell {
+  color: var(--brand-600);
+  word-break: break-all;
+}
+
+/* Student profile modal */
+.pv {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.pv__side {
+  width: 168px;
+  flex: none;
+  text-align: center;
+}
+.pv__side .avatar--lg {
+  margin: 0 auto 10px;
+}
+.pv__name {
+  font-family: var(--font-display);
+  font-size: 1.12rem;
+}
+.pv__role {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin: 2px 0 10px;
+}
+.pv__body {
+  flex: 1;
+  min-width: 240px;
+}
+.pv__section {
+  margin-bottom: 16px;
+}
+.pv__section h4 {
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 0.76rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+
+/* ---------- Courses ---------- */
+.course-grid {
+  grid-template-columns: repeat(auto-fill, minmax(288px, 1fr));
+}
+.course-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.course-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.course-card__code {
+  font-size: 0.72rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--brand-600);
+  font-weight: 700;
+}
+.course-card__name {
+  font-family: var(--font-display);
+  font-size: 1.06rem;
+  margin-top: 3px;
+}
+.course-card__faculty {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+.course-card__facts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 11px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.fact {
+  text-align: center;
+}
+.fact strong {
+  display: block;
+  font-size: 1.02rem;
+  font-family: var(--font-display);
+}
+.fact span {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.course-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+}
+
+/* ---------- Marks ---------- */
+.table--marks {
+  min-width: 1020px;
+}
+.grade {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.grade--top {
+  color: var(--ok-500);
+  background: color-mix(in srgb, var(--ok-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--ok-500) 26%, transparent);
+}
+.grade--mid {
+  color: var(--warn-500);
+  background: color-mix(in srgb, var(--warn-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--warn-500) 26%, transparent);
+}
+.grade--low {
+  color: var(--bad-500);
+  background: color-mix(in srgb, var(--bad-500) 12%, transparent);
+  border-color: color-mix(in srgb, var(--bad-500) 26%, transparent);
+}
+.marks-summary {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 18px;
+}
+
+@media (max-width: 640px) {
+  .pv__side {
+    width: 100%;
+  }
+}
+
+/* Toolbar sizing + table text flow refinements */
+.students-toolbar .input,
+.students-toolbar select.input {
+  width: auto;
+  min-width: 170px;
+}
+.students-toolbar .search {
+  min-width: 240px;
+}
+.link-cell {
+  white-space: nowrap;
+  word-break: normal;
+}
+.cell-user strong {
+  white-space: nowrap;
+}

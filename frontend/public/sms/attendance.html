@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attendance · Sunrise Institute Student ERP</title>
+<meta name="description" content="Daily attendance register with present and absent marking and live percentages.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/dashboard.css">
+<link rel="stylesheet" href="css/students.css">
+<link rel="stylesheet" href="css/attendance.css">
+</head>
+<body>
+<div class="loader" data-loader>
+  <div class="loader__inner">
+    <div class="loader__mark">SM</div>
+    <strong>Sunrise Institute ERP</strong>
+    <div class="loader__bar"></div>
+  </div>
+</div>
+<div class="app">
+  <aside class="sidebar" data-sidebar aria-label="Sidebar"></aside>
+  <div class="scrim" data-scrim></div>
+  <main class="main">
+    <header class="topbar">
+      <button class="icon-btn hamburger" type="button" data-sidebar-toggle aria-label="Toggle navigation">☰</button>
+      <div class="topbar__titles">
+        <nav class="crumbs" data-breadcrumb aria-label="Breadcrumb"></nav>
+        <h1>Attendance Register</h1>
+      </div>
+      <div class="topbar__actions">
+        <button class="icon-btn theme-toggle" type="button" data-theme-toggle aria-pressed="false" aria-label="Toggle dark mode">
+          <span class="theme-toggle__sun">☾</span><span class="theme-toggle__moon">☀</span>
+        </button>
+        <div class="user-chip">
+          <span class="avatar" aria-hidden="true">·</span>
+          <span class="user-chip__meta"><strong>Loading…</strong><span> </span></span>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid att-summary stagger" data-att-summary aria-label="Attendance summary"></section>
+    <section class="card slide-up">
+      <div class="students-toolbar">
+        <div class="search">
+          <span class="search__icon" aria-hidden="true">⌕</span>
+          <label class="sr-only" for="att-search">Search register</label>
+          <input class="input" id="att-search" type="search" placeholder="Search by name or roll number…" data-search>
+        </div>
+        <label class="sr-only" for="filter-tone">Filter by attendance band</label>
+        <select class="input" id="filter-tone" data-filter-tone>
+          <option value="">All bands</option>
+          <option value="ok">85% and above</option>
+          <option value="warn">70% – 84%</option>
+          <option value="bad">Below 70%</option>
+        </select>
+      </div>
+      <p class="result-note" data-result-note aria-live="polite"></p>
+      <div class="table-wrap">
+        <table class="table table--attendance">
+          <thead><tr><th>Student</th><th>Roll Number</th><th>Attendance %</th><th>Status</th><th>Present Days</th><th>Absent Days</th><th>Last Marked</th><th>Actions</th></tr></thead>
+          <tbody data-tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+<script src="data/data.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/app.js"></script>
+<script src="js/attendance.js"></script>
+</body>
+</html>
