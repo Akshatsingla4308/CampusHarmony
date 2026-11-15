@@ -15,8 +15,7 @@ import java.util.List;
 public interface CourseRepository extends JpaRepository<Course, String> {
 
     @Query("SELECT c FROM Course c WHERE " +
-           "(:teacherId IS NULL AND c.teacherId IS NULL) OR " +
-           "(:teacherId IS NOT NULL AND c.teacherId = :teacherId)")
+           "(:teacherId IS NULL OR :teacherId = '' OR c.teacherId = :teacherId)")
     List<Course> findByWorkspace(@Param("teacherId") String teacherId);
 
     List<Course> findBySemester(Integer semester);

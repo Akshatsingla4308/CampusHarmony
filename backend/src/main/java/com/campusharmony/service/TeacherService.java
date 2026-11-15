@@ -21,6 +21,12 @@ public interface TeacherService {
 
     Teacher registerTeacher(RegisterTeacherRequest request);
 
+    Teacher createTeacher(Teacher teacher);
+
+    Teacher updateTeacher(String id, Teacher teacher);
+
+    void deleteTeacher(String id);
+
     Student registerStudent(RegisterStudentRequest request);
 
     Map<String, Object> authenticate(LoginRequest request);

@@ -279,7 +279,7 @@ CREATE TABLE activities (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_activities_teacher FOREIGN KEY (teacher_id) 
         REFERENCES teachers(id) ON DELETE SET NULL ON UPDATE CASCADE,
-    CONSTRAINT chk_activity_type CHECK (type IN ('notice', 'attendance', 'grade', 'enroll', 'course', 'system'))
+    CONSTRAINT chk_activity_type CHECK (type IN ('notice', 'attendance', 'grade', 'enroll', 'course', 'system', 'edit', 'marks'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Table 14: defaulter_audit_log (Immutable compliance snapshot log)

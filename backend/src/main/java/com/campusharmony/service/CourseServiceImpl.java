@@ -43,7 +43,7 @@ public class CourseServiceImpl implements CourseService {
         List<Course> courses = courseRepository.findByWorkspace(teacherId != null && !teacherId.isBlank() ? teacherId.trim() : null);
         List<Student> students = teacherId != null && !teacherId.isBlank() 
                 ? studentRepository.findByTeacherId(teacherId.trim()) 
-                : studentRepository.findByTeacherIdIsNull();
+                : studentRepository.findAll();
 
         // Calculate enrolled students per course based on semester
         for (Course c : courses) {

@@ -54,7 +54,12 @@ async function request(endpoint, options = {}) {
     }
 
     // Handle generic ApiResponse wrapper if present
-    if (data && typeof data === "object" && data.success !== undefined && data.data !== undefined) {
+    if (
+      data &&
+      typeof data === "object" &&
+      (data.success !== undefined || data.ok !== undefined) &&
+      data.data !== undefined
+    ) {
       return data.data;
     }
 

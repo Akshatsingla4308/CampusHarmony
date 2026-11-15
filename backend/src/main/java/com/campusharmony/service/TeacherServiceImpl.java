@@ -161,6 +161,32 @@ public class TeacherServiceImpl implements TeacherService {
         }
     }
 
+    @Override
+    public Teacher createTeacher(Teacher teacher) {
+        if (teacher.getId() == null || teacher.getId().isBlank()) {
+            teacher.setId("T-" + (teacherRepository.count() + 1001));
+        }
+        if (teacher.getWorkspace() == null) {
+            teacher.setWorkspace("demo");
+        }
+        return teacherRepository.save(teacher);
+    }
+
+    @Override
+    public Teacher updateTeacher(String id, Teacher updated) {
+        Teacher existing = getTeacherById(id);
+        if (updated.getName() != null) existing.setName(updated.getName());
+        if (updated.getDepartmentId() != null) existing.setDepartmentId(updated.getDepartmentId());
+        if (updated.getSubject() != null) existing.setSubject(updated.getSubject());
+        return teacherRepository.save(existing);
+    }
+
+    @Override
+    public void deleteTeacher(String id) {
+        Teacher existing = getTeacherById(id);
+        teacherRepository.delete(existing);
+    }
+
     private String normalizeName(String input) {
         if (input == null) return "";
         return input.toLowerCase()
