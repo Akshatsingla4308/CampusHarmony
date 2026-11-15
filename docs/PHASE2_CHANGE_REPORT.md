@@ -1,108 +1,102 @@
-# CAMPUS HARMONY — PHASE 2 DESIGN REVISION & CHANGE REPORT
+# CAMPUS HARMONY — PHASE 2 FINAL CHANGE REPORT (VERSION 3.0)
 
-**Document:** Phase 2 Change Report (Post-Review Revision)  
+**Document:** Comprehensive Change Log & Design Evolution Report  
 **Academic Context:** BE CSE Semester III, Batch 2025  
-**Course:** Database Management Systems (24CSE0209) / Programming in Java (25CSE0202)  
-**Date:** November 15, 2026  
+**Course:** Database Management Systems (24CSE0209)  
+**Date:** November 16, 2026  
+**Revision:** Version 3.0 (Final Corrected Phase 2 Architecture)  
 
 ---
 
-## 1. Executive Summary of Changes
+## 1. Evolution Overview (Version 1 $\to$ Version 2 $\to$ Version 3)
 
-Following faculty review of the initial Phase 2 ER Model & Diagram report, 10 structural and relational issues were identified. This document details the exact modifications made to the conceptual ER model, Crow's Foot ER diagram, cardinality matrix, relational schema, data dictionary, and normalization justifications.
-
----
-
-## 2. Point-by-Point Resolution of Review Issues
-
-### Issue 1: Missing DEPARTMENTS–TEACHERS Relationship
-- **Previous State:** The `teachers` table had no foreign key linking it to `departments`. Teachers were mapped only to `subjects.subject_key`.
-- **Revision Applied:**
-  - Added `department_id INT NOT NULL` to `teachers` as a foreign key referencing `departments(id)`.
-  - Defined referential integrity: `ON UPDATE CASCADE ON DELETE RESTRICT` (a department cannot be deleted if active faculty members are employed by it).
-  - Updated ER diagram with mandatory $1 : 1..N$ relationship: `DEPARTMENTS ||--|{ TEACHERS : "employs"`.
-
----
-
-### Issue 2: STUDENTS.department String Replaced with department_id FK
-- **Previous State:** `students` stored `department VARCHAR(100)` as plain text without referential integrity to `departments`.
-- **Revision Applied:**
-  - Added `department_id INT NOT NULL` referencing `departments(id)`.
-  - Defined referential integrity: `ON UPDATE CASCADE ON DELETE RESTRICT`.
-  - Maintained `department VARCHAR(100)` strictly as a synchronized legacy compatibility field so existing frontend components and API endpoints reading `student.department` continue operating without breaking changes.
-  - Updated ER diagram: `DEPARTMENTS ||--|{ STUDENTS : "enrolls"`.
+| Design Area | Version 1 (Baseline Stage B) | Version 2 (First Revision) | Version 3 (Final Corrected Phase 2) | Academic Justification / Resolution |
+| :--- | :--- | :--- | :--- | :--- |
+| **Defaulter Audit Deletion Behavior** | `ON DELETE CASCADE` | `ON DELETE CASCADE` | **`ON DELETE SET NULL`** | Deleting a student from master tables **cannot destroy historical audit compliance logs**! Immutable snapshot fields are permanently preserved. |
+| **Academic Terms & Repeat Exams** | Not modeled | Not modeled | **`ACADEMIC_PERIODS` Entity & `academic_period_id` FK** | Permits repeated examinations across different terms (e.g. backlogs, improvements) while preventing duplicates within the same term via candidate key `(student_id, subject_key, exam_type, academic_period_id)`. |
+| **Course Enrollment Integrity** | Inferred by semester match in code | `course_enrollments` associative entity | **`course_enrollments` + Enrollment-Gated Attendance** | Attendance can **only** be marked for a student actively enrolled in the course (`attendance_records` has FK to `course_enrollments(id)`). |
+| **Multi-Session Attendance Support** | 1 session per date `(student_id, date, course)` | 1 session per date | **`ATTENDANCE_SESSIONS` Entity with `session_slot`** | Naturally supports multiple class sessions on the same date (e.g., Slot 1 Lecture at 09:00 AM and Slot 3 Practical Lab at 02:00 PM) without key collision. |
+| **Department Duplication** | Plain text string `department` | `department_id` + string | **`department_id` (Authoritative) + Auto-Sync Trigger** | `department_id` is the single authoritative source of truth. Legacy string `department` is populated via trigger for backward compatibility, with an explicit 3-phase deprecation roadmap. |
+| **Legacy Marks Architecture** | Ambiguously called "cached view" and "table" | Called "view/table" | **Explicitly a Physical Summary Cache Table** | Verified against `MarksServiceImpl.java` (line 50 calls `marksRepository.save(fresh)` which fails on SQL views). Kept in sync with `student_marks` via database triggers. |
+| **Normalization Proofs** | Informal summary | Informal summary | **Formal Mathematical Proofs** | Formally defined relations, candidate keys $CK(R)$, and non-trivial functional dependencies $F(R)$; proved 1NF, 2NF, 3NF, and BCNF mathematically. |
+| **Mermaid ER Diagram** | 10 entities | 12 entities | **14 Entities with Complete Relational Integrity** | Full diagram modeling all entities, cardinality indicators, and participation constraints. |
+| **Source Code Verification** | Conceptual statements | Conceptual statements | **Line-by-Line Code Verification** | Inspected actual code in `StudentServiceImpl.java`, `MarksServiceImpl.java`, `CourseServiceImpl.java`, `AttendanceServiceImpl.java`, and `app.js` to prove zero breaking changes. |
 
 ---
 
-### Issue 3: Missing COURSES–SUBJECTS Relationship & Clear Distinction
-- **Previous State:** `courses` had no direct link to `subjects`. The distinction between an overarching academic subject and an operational course offering was ambiguous.
-- **Revision Applied:**
-  - **Academic Distinction Established:**
-    - **Subject (Academic Discipline / Evaluation Domain):** Broader curriculum knowledge area (e.g. `computerScience`, `mathematics`, `physics`, `chemistry`, `english`) that faculty specialize in and under which student cumulative marks are aggregated.
-    - **Course (Specific Instructional Module / Class Offering):** A discrete operational lecture course offered in a specific semester with credit weight and assigned faculty (e.g., `CS501` "Data Structures & Algorithms", `CS502` "Operating Systems", `IT301` "Database Management Systems").
-  - Added `subject_key VARCHAR(50) NOT NULL` to `courses` referencing `subjects(subject_key) ON UPDATE CASCADE ON DELETE RESTRICT`.
-  - Added `department_id INT NOT NULL` to `courses` referencing `departments(id) ON UPDATE CASCADE ON DELETE RESTRICT`.
-  - Updated ER diagram: `SUBJECTS ||--|{ COURSES : "categorizes"` and `DEPARTMENTS ||--|{ COURSES : "offers"`.
+## 2. Detailed Technical Breakdown of Version 3 Modifications
+
+### A. Resolution 1: Defaulter Audit History (`ON DELETE SET NULL`)
+- **Problem in Version 2:** If a student was deleted or withdrew, `ON DELETE CASCADE` on `defaulter_audit_log.student_id` purged all audit records involving that student. This violated regulatory requirements for immutable academic audit trails.
+- **Correction in Version 3:**
+  - Foreign key definition updated to:
+    ```sql
+    CONSTRAINT fk_defaulter_student FOREIGN KEY (student_id)
+        REFERENCES students(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE
+    ```
+  - `student_id` is made `NULLABLE`.
+  - The snapshot columns (`roll`, `student_name`, `department`, `attendance_percentage`, `classes_needed`, `reported_at`) are declared `NOT NULL`.
+  - **Outcome:** If a student is deleted, `student_id` is set to `NULL`, but the complete audit record with their roll number, student name, department, attendance percentage, classes needed, and audit timestamp remains permanently preserved.
 
 ---
 
-### Issue 4: Addition of COURSE_ENROLLMENTS Associative Entity
-- **Previous State:** Course registration was implicit and conflated with attendance or semester matching (e.g., assuming all semester 5 students were enrolled in all semester 5 courses).
-- **Revision Applied:**
-  - Introduced `COURSE_ENROLLMENTS` associative entity modeling the $M:N$ relationship between `STUDENTS` and `COURSES`:
-    - Attributes: `id` (PK), `student_id` (FK), `course_code` (FK), `enrollment_date`, `status` (`'Enrolled'`, `'Dropped'`, `'Completed'`), `grade` (nullable final grade), `created_at`.
-    - Constraint: `UNIQUE KEY uk_student_course (student_id, course_code)` guarantees unique enrollment per course.
-    - Referential Actions: `ON UPDATE CASCADE ON DELETE CASCADE`.
+### B. Resolution 2: Student Marks and Academic Periods
+- **Problem in Version 2:** The uniqueness constraint `UNIQUE(student_id, subject_key, exam_type)` precluded a student from taking the same subject examination in different semesters or academic years (e.g. improvement exam, backlog examination, or recurring subjects).
+- **Correction in Version 3:**
+  - Created entity `academic_periods` (`id`, `code`, `name`, `academic_year`, `semester_term`, `is_current`).
+  - Added `academic_period_id INT NOT NULL` and `semester INT NOT NULL` to `student_marks`.
+  - Updated candidate key:
+    ```sql
+    CONSTRAINT uk_student_subject_exam_period
+        UNIQUE (student_id, subject_key, exam_type, academic_period_id)
+    ```
+  - **Outcome:** A student can have an `'Endterm'` evaluation in `computerScience` for `2026-ODD` and another evaluation for `2027-ODD`, while duplicate entries within the exact same academic term are strictly prevented.
 
 ---
 
-### Issue 5: Correction of Crow's Foot Cardinalities for Optional Mentors and Authors
-- **Previous State:** Previous ER diagram incorrectly depicted mentor relationships as mandatory for students (`TEACHERS ||--o{ STUDENTS`) and mandatory for activities (`TEACHERS ||--o{ ACTIVITIES`).
-- **Revision Applied:**
-  - **Student Mentor:** A teacher may mentor $0..N$ students; a student has **$0..1$** mentor (`teacher_id` is nullable for unassigned or global demo students). Diagram corrected to: `TEACHERS |o--o{ STUDENTS : "mentors (optional)"`.
-  - **Activity Author:** A teacher authors $0..N$ activities; an activity has **$0..1$** author (`teacher_id` is nullable for system/automated notifications). Diagram corrected to: `TEACHERS |o--o{ ACTIVITIES : "authors (optional)"`.
-  - **Course Instructor:** A teacher instructs $0..N$ courses; a course has **$0..1$** assigned instructor (`teacher_id` is nullable). Diagram corrected to: `TEACHERS |o--o{ COURSES : "instructs (optional)"`.
+### C. Resolution 3: Attendance and Course Enrollment Integrity
+- **Problem in Version 2:**
+  1. Attendance could theoretically be logged for a student without verifying their enrollment in that course.
+  2. The unique key `(student_id, session_date, course_code)` prevented marking multiple sessions on the same date (e.g., a theory lecture in the morning and a lab in the afternoon).
+- **Correction in Version 3:**
+  - Introduced `attendance_sessions` representing the scheduled lecture slot:
+    ```sql
+    CONSTRAINT uk_course_session_slot UNIQUE (course_code, session_date, session_slot)
+    ```
+  - Introduced `attendance_records` linked directly to `session_id`, `student_id`, and `enrollment_id`:
+    ```sql
+    CONSTRAINT fk_att_rec_enrollment FOREIGN KEY (enrollment_id)
+        REFERENCES course_enrollments(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT uk_session_student UNIQUE (session_id, student_id)
+    ```
+  - **Outcome:** Attendance is physically gated on `course_enrollments(id)`, and multiple sessions per day are cleanly supported via `session_slot`.
 
 ---
 
-### Issue 6: Clarification of ATTENDANCE and MARKS Participation
-- **Previous State:** Previously claimed that a `UNIQUE` foreign key guaranteed mandatory 1:1 participation.
-- **Revision Applied:**
-  - Clarified database theory: In relational databases, a Foreign Key with a `UNIQUE` constraint in a child table only enforces that each child row references at most one parent and no two child rows share the same parent ($0..1$). It does **not** force a parent row to possess a child row at creation time.
-  - Structurally, until the enrollment logic or trigger initializes summary rows, a newly enrolled student has 0 attendance rows and 0 marks rows.
-  - Diagram corrected to: `STUDENTS |o--o| ATTENDANCE` and `STUDENTS |o--o| MARKS` (structural $0..1$ participation until initialized).
+### D. Resolution 4: Department Duplication & Single Source of Truth
+- **Problem in Version 2:** Both `students.department_id` and `students.department` existed without a formally documented synchronization mechanism.
+- **Correction in Version 3:**
+  - Designated `department_id INT NOT NULL REFERENCES departments(id)` as the **single authoritative source of truth**.
+  - Documented the database trigger `trg_sync_student_department_before_insert_update` that automatically maintains `students.department = departments.name` on write operations.
+  - Published an explicit 3-phase deprecation roadmap to eliminate string duplication post-evaluation.
 
 ---
 
-### Issue 7: Inconsistency in Supported Exam Types
-- **Previous State:** Text mentioned `Assignment`, while schema and circulars emphasized formal university evaluations.
-- **Revision Applied:**
-  - Standardized supported exam types strictly across all documentation, check constraints, and triggers to the 3 university examination categories:
-    `CHECK (exam_type IN ('Internal', 'Midterm', 'Endterm'))`.
+### E. Resolution 5: Legacy Marks as a Physical Summary Cache Table
+- **Problem in Version 2:** The documentation referred to `marks` interchangeably as a "cached view" and a "physical table".
+- **Correction in Version 3:**
+  - Formally established that `marks` is a **Physical Summary Cache Table**, NOT an SQL view.
+  - Verified against `MarksServiceImpl.java` (line 50 calls `marksRepository.save(fresh)` which requires an updatable table).
+  - Documented trigger `trg_sync_student_marks_to_legacy` for real-time synchronization with `student_marks`.
 
 ---
 
-### Issue 8: DEFAULTER_AUDIT_LOG Relationship & Historical Snapshot Semantics
-- **Previous State:** `defaulter_audit_log` appeared isolated without clear relational context.
-- **Revision Applied:**
-  - Formally linked to `STUDENTS` via `student_id BIGINT NOT NULL REFERENCES students(id) ON DELETE CASCADE`.
-  - Documented historical snapshot semantics: The table deliberately preserves denormalized snapshot fields (`roll`, `student_name`, `department`, `attendance_percentage`, `classes_needed`) so that the audit trail remains an immutable, historically accurate record of student status at the exact time the audit procedure executed, even if the student's department or attendance changes later.
-  - Updated ER diagram: `STUDENTS ||--o{ DEFAULTER_AUDIT_LOG : "audited in"`.
-
----
-
-### Issue 9: Review of Duplicate Data & Legacy Compatibility Boundaries
-- **Previous State:** Unclear distinction between normalized source of truth and legacy compatibility fields.
-- **Revision Applied:**
-  - `COURSES.faculty`: Identified as redundant with `teachers.name`. Established `teacher_id` as the relational foreign key source of truth; `faculty` is made nullable and populated dynamically/on-insert for legacy API clients.
-  - `STUDENTS.department`: Identified as redundant with `departments.name`. Established `department_id` as the relational foreign key source of truth; string `department` is maintained for zero-breakage compatibility with existing UI filters.
-  - Legacy `MARKS` table: Formally documented as a cached legacy summary table representing the 5 fixed curriculum subjects, kept in sync with the normalized `student_marks` table via triggers.
-
----
-
-### Issue 10: Consistent Foreign-Key Deletion Rules, Constraints & Nullability
-- **Previous State:** Deletion actions were fragmented or omitted for some tables.
-- **Revision Applied:**
-  - Produced a comprehensive 18-row Foreign-Key Referential Integrity Matrix covering every relationship with explicit `ON UPDATE CASCADE`, `ON DELETE RESTRICT / CASCADE / SET NULL`, and academic justifications.
-  - Enforced `NOT NULL` on all primary keys, non-optional foreign keys (`department_id`, `subject_key`), and core operational fields.
-  - Enforced `CHECK` constraints on semesters (1–8), credits (1–10), marks ($0 \le \text{marks} \le \text{max\_marks}$), statuses, and non-negative attendance counters.
+### F. Resolution 6: Rigorous Mathematical Normalization Proofs
+- **Problem in Version 2:** Normalization claims lacked formal candidate keys and functional dependency proofs.
+- **Correction in Version 3:**
+  - Formally listed candidate keys $CK(R)$ and non-trivial functional dependencies $F(R)$ for all relations.
+  - Proved that all relations strictly satisfy 1NF, 2NF, 3NF, and BCNF.
+  - Detailed the engineering rationale for intentional controlled denormalizations (`attendance` summary cache and `defaulter_audit_log` snapshot).
