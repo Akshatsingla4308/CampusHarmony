@@ -70,8 +70,10 @@ BEGIN
     -- Handle cursor exhaust condition
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET v_done = 1;
 
-    -- Clean up previous run data from the audit log
+    -- Clean up previous run data from the audit log using authorized session token
+    SET @ALLOW_AUDIT_PURGE = TRUE;
     DELETE FROM defaulter_audit_log;
+    SET @ALLOW_AUDIT_PURGE = FALSE;
 
     OPEN cur_defaulters;
 
@@ -419,3 +421,80 @@ DELIMITER ;
   - **Consistency:** Constraints (`CHECK`, `UNIQUE`, `FK`) are strictly respected.
   - **Isolation:** Uncommitted inserts are invisible to concurrent transactions.
   - **Durability:** Once `COMMIT` executes, changes persist in the InnoDB write-ahead log (WAL) even across power failures.
+
+---
+
+## 7. Use Case 7: Compliance Audit Snapshot Immutability (Defense-in-Depth Triggers)
+
+### Problem Statement:
+Accreditation bodies require that once attendance defaulter audits are compiled, historical records in `defaulter_audit_log` cannot be surreptitiously edited, altered, or deleted by application users. While `ON DELETE SET NULL` prevents records from vanishing when a student is deleted, engine-level triggers are required to actively block `UPDATE` and ad-hoc `DELETE` operations.
+
+### Techniques Demonstrated:
+- `BEFORE UPDATE` trigger halting modification with custom error `SIGNAL SQLSTATE '45000'`.
+- `BEFORE DELETE` trigger restricting deletion to authorized administrative procedures setting session token `@ALLOW_AUDIT_PURGE`.
+
+### Procedural SQL Implementation Design:
+```sql
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_prevent_defaulter_audit_update //
+
+CREATE TRIGGER trg_prevent_defaulter_audit_update
+BEFORE UPDATE ON defaulter_audit_log
+FOR EACH ROW
+BEGIN
+    SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Security Violation: Historical audit snapshots in defaulter_audit_log are legally immutable.';
+END //
+
+DROP TRIGGER IF EXISTS trg_prevent_defaulter_audit_delete //
+
+CREATE TRIGGER trg_prevent_defaulter_audit_delete
+BEFORE DELETE ON defaulter_audit_log
+FOR EACH ROW
+BEGIN
+    IF @ALLOW_AUDIT_PURGE IS NULL OR @ALLOW_AUDIT_PURGE != TRUE THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Security Violation: Direct deletion of defaulter audit records is prohibited.';
+    END IF;
+END //
+
+DELIMITER ;
+```
+
+---
+
+## 8. Use Case 8: Attendance Enrollment Status Gating Trigger
+
+### Problem Statement:
+A student may have an active course enrollment record, but if they subsequently drop the course (`status = 'Dropped'`) or complete the course (`status = 'Completed'`), attendance marks must not be logged for them.
+
+### Techniques Demonstrated:
+- Trigger validating state of a foreign entity before allowing child row insertion (`BEFORE INSERT ON attendance_records`).
+- Multi-table integrity checking with custom exception signaling.
+
+### Procedural SQL Implementation Design:
+```sql
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_validate_attendance_enrollment_status //
+
+CREATE TRIGGER trg_validate_attendance_enrollment_status
+BEFORE INSERT ON attendance_records
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(20);
+
+    SELECT status INTO v_status
+    FROM course_enrollments
+    WHERE id = NEW.enrollment_id;
+
+    IF v_status IS NULL OR v_status != 'Enrolled' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Integrity Violation: Attendance can only be recorded for students with status Enrolled. Dropped/Completed enrollments are ineligible.';
+    END IF;
+END //
+
+DELIMITER ;
+```
+

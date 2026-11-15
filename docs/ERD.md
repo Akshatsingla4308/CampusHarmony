@@ -1,35 +1,45 @@
-# CAMPUS HARMONY — ENTITY-RELATIONSHIP (ER) MODEL & DIAGRAM (FINAL PHASE 2)
+# CAMPUS HARMONY — ENTITY-RELATIONSHIP (ER) MODEL & DIAGRAM (FINAL PHASE 2 - REVISED)
 
 **Course Context:** Database Management Systems (24CSE0209)  
 **Project Identity:** Campus Harmony (College ERP / Student Management System)  
 **Academic Session:** July–December 2026, Semester III, Batch 2025  
-**Document Revision:** Version 3.0 (Final Comprehensive Revision)  
+**Document Revision:** Version 4.0 (Final Technical Corrections)  
 
 ---
 
-## 1. Case Study & Business Domain
+## 1. Case Study & Academic Domain Modeling
 
-Campus Harmony is a centralized Student Information and Enterprise Resource Planning (ERP) system designed for educational institutions. The system models academic administration across multiple departments, subjects, faculty members, enrolled students, academic periods, course catalogues, formal course enrollments, lecture attendance sessions, event-level attendance tracking, and semester examination performance.
+Campus Harmony is an institutional Enterprise Resource Planning (ERP) and Student Information System (SMS) designed for engineering institutes. The system models the academic ecosystem spanning departments, curricular subjects, faculty appointments, student enrollments, academic periods, course catalogues, formal course registrations, scheduled attendance sessions, enrollment-gated attendance tracking, academic evaluations across exam terms, administrative feeds, and immutable compliance audit logs.
 
-### A. Academic Hierarchy & Curricular Structure
-1. **Departments & Affiliation:** The institute comprises multiple academic departments (e.g., Computer Science, Information Technology, Electronics, Mechanical, Civil). Each department is uniquely identified by an integer `id`, department `code` (e.g., `CS`), and full `name`. Every faculty member and enrolled student is affiliated with exactly one academic department (`department_id`).
-2. **Subject vs. Course (Structural Distinction):**
-   - **Subject (Curricular Domain / Academic Discipline):** A foundational discipline or broad knowledge area evaluated in university degree curricula (e.g., `computerScience`, `mathematics`, `physics`, `chemistry`, `english`). Each faculty member specializes in one subject, and student cumulative evaluations are categorized under subjects.
-   - **Course (Specific Instructional Module / Class Offering):** A concrete operational lecture course offered in a particular semester with defined credit hours, syllabus, and assigned teacher (e.g., `CS501` "Data Structures & Algorithms", `CS502` "Operating Systems", `IT301` "Database Management Systems", `EC701` "VLSI Design"). Every course belongs to one parent Subject domain and is offered by one Department.
-3. **Academic Periods (Terms):**
-   - Formal university academic terms (e.g. Autumn 2026, Spring 2027) are represented in `ACADEMIC_PERIODS` (`id`, `code`, `name`, `academic_year`, `semester_term`, `is_current`).
-   - Both course enrollments and student marks link to `academic_period_id`. This permits repeated examinations across different terms (e.g., backlog, improvement, or recurring subjects) while strictly preventing duplicates within the same term via candidate key `(student_id, subject_key, exam_type, academic_period_id)`.
-4. **Course Enrollments (Associative Entity):**
-   - Student course registration is represented independently of attendance via `COURSE_ENROLLMENTS`. A student explicitly enrolls in specific courses each term (`Enrolled`, `Dropped`, `Completed`).
-5. **Attendance Sessions & Event Records (Enrollment-Gated Attendance):**
-   - **Attendance Sessions (`ATTENDANCE_SESSIONS`):** Represents an actual lecture or lab event conducted by an instructor (`course_code`, `session_date`, `session_slot`, `session_type`, `teacher_id`). The unique constraint `uk_course_session_slot (course_code, session_date, session_slot)` supports multiple sessions on the same date (e.g., Slot 1 Morning Lecture and Slot 2 Afternoon Lab) while preventing duplicate session creation.
-   - **Attendance Records (`ATTENDANCE_RECORDS`):** Individual student attendance for a session. It references `session_id`, `student_id`, and `enrollment_id`. This foreign key linkage guarantees that attendance can **only** be marked for a student who is actively enrolled in that course! Uniqueness is enforced via `uk_session_student (session_id, student_id)`.
-   - **Attendance Summary (`ATTENDANCE`):** A physical summary table containing cumulative counters (`total_days`, `present_days`, `absent_days`, `last_marked`) updated automatically via triggers for $O(1)$ dashboard reads. Structurally, it is an optional $0..1$ relationship until initialized.
+### A. Core Academic Entities & Rules
+1. **Departments & Institutional Affiliation:**
+   - Every faculty member and enrolled student is affiliated with exactly one academic department (`department_id` in `TEACHERS` and `STUDENTS` referencing `DEPARTMENTS.id`).
+   - Departments offer semester courses (`COURSES.department_id`).
+2. **Subject vs. Course Distinction:**
+   - **Subject (Curricular Domain / Knowledge Area):** Broad discipline in the curriculum (e.g., `computerScience`, `mathematics`, `physics`, `chemistry`, `english`). Faculty specialize in a subject (`TEACHERS.subject`), and student examination marks are earned under subjects.
+   - **Course (Operational Instructional Module):** A specific operational course taught in a designated semester with assigned credit hours and instructor (e.g., `CS501` "Data Structures & Algorithms", `IT301` "DBMS"). Every course belongs to one parent Subject discipline (`COURSES.subject_key`) and is offered by a Department.
+3. **Academic Periods (`ACADEMIC_PERIODS`):**
+   - Academic calendars are structured into distinct terms (e.g., `2026-ODD` Autumn 2026, `2027-EVEN` Spring 2027).
+   - Both course enrollments and student marks link to `academic_period_id`. This permits repeated evaluations in the same subject across different academic terms (e.g., backlog, improvement, or recurring subjects) while strictly preventing duplicate score entries within the same term via candidate key `(student_id, subject_key, exam_type, academic_period_id)`.
+4. **Course Enrollments (`COURSE_ENROLLMENTS`):**
+   - Student course registration is represented independently of attendance. A student explicitly registers for specific courses per academic period with enrollment status (`Enrolled`, `Dropped`, `Completed`).
+5. **Attendance Sessions & Composite Enrollment-Gated Integrity:**
+   - **Attendance Sessions (`ATTENDANCE_SESSIONS`):** Represents an actual lecture or lab event conducted by an instructor. Course codes are reused across academic terms; therefore, `ATTENDANCE_SESSIONS` incorporates `academic_period_id` alongside `course_code`, `session_date`, and `session_slot`. The constraint `UNIQUE KEY uk_course_period_session_slot (course_code, academic_period_id, session_date, session_slot)` supports multiple lecture/lab sessions on the same date (e.g., Slot 1 Morning Lecture and Slot 3 Practical Lab) without key collision.
+   - **Attendance Records (`ATTENDANCE_RECORDS`):** Individual student attendance for a session. It enforces relational integrity through **composite foreign keys**:
+     - `(session_id, course_code, academic_period_id) REFERENCES ATTENDANCE_SESSIONS(id, course_code, academic_period_id)`
+     - `(enrollment_id, student_id, course_code, academic_period_id) REFERENCES COURSE_ENROLLMENTS(id, student_id, course_code, academic_period_id)`
+     - **Relational Guarantee:** The session and the enrollment are mathematically guaranteed to share the exact same course and the exact same academic period, and the student in the record is guaranteed to be the student in that enrollment!
+     - In addition, database trigger `trg_validate_attendance_enrollment_status` verifies that the student's enrollment status is `'Enrolled'`, rejecting attendance for `'Dropped'` or `'Completed'` registrations.
+   - **Attendance Summary (`ATTENDANCE`):** A physical summary cache table holding cumulative counters (`total_days`, `present_days`, `absent_days`, `last_marked`) updated automatically via triggers for $O(1)$ dashboard queries. Structurally, it is an optional $0..1$ relationship until initialized.
 6. **Academic Performance (Marks):**
-   - **Normalized Evaluations (`STUDENT_MARKS`):** Examination scores are tracked per student, per subject, per exam type, and per academic period. Supported exam types are strictly standardized as `'Internal'`, `'Midterm'`, and `'Endterm'`. Bounds ($0 \le \text{marks\_obtained} \le \text{max\_marks}$) and grade calculation (`A+`, `A`, `B`, `C`, `D`, `F`) are enforced via database triggers and functions.
-   - **Legacy 5-Subject Summary (`MARKS`):** Maintained as an explicit **Physical Summary Cache Table** for backward compatibility with existing Spring Boot JPA repositories and 5-subject UI screens, synchronized with `STUDENT_MARKS` via database triggers.
-7. **Administrative Notices & Activities (`ACTIVITIES`):** Administrative notices and activity logs with optional author reference (`teacher_id`, nullable for system-wide notices).
-8. **Immutable Defaulter Audit Log (`DEFAULTER_AUDIT_LOG`):** An administrative audit table populated by the cursor procedure `sp_generate_attendance_defaulter_report`. It stores historical point-in-time snapshots of attendance defaulters. Its foreign key `student_id` is declared `ON DELETE SET NULL`, ensuring that deleting a student from master tables **cannot destroy historical audit compliance logs**!
+   - **Normalized Evaluations (`STUDENT_MARKS`):** Examination scores are tracked per student, per subject, per exam type, and per academic period. Standardized exam types are `'Internal'`, `'Midterm'`, and `'Endterm'`. Bounds ($0 \le \text{marks\_obtained} \le \text{max\_marks}$) and grade calculation (`A+`, `A`, `B`, `C`, `D`, `F`) are enforced via triggers and stored functions.
+   - **Legacy 5-Subject Summary (`MARKS`):** Retained as an explicit **Physical Summary Cache Table** for backward compatibility with existing Spring Data JPA repositories and evaluated 5-subject UI screens, synchronized via triggers.
+7. **Administrative Notices & Activities (`ACTIVITIES`):** Real-time administrative notices with optional author reference (`teacher_id`, nullable for automated/system-wide notices).
+8. **Immutable Defaulter Audit Snapshots (`DEFAULTER_AUDIT_LOG`):**
+   - Generated by the cursor procedure `sp_generate_attendance_defaulter_report`.
+   - `student_id` is declared `NULLABLE` with `ON DELETE SET NULL`, ensuring deleting a student from master tables **cannot destroy historical audit compliance logs**.
+   - Immutable snapshot attributes (`roll`, `student_name`, `department`, `attendance_percentage`, `classes_needed`, `reported_at`) are declared `NOT NULL`.
+   - Immutability is actively protected against unauthorized tampering through a database trigger (`BEFORE UPDATE` raises an error) and DCL privilege revocation (`REVOKE UPDATE, DELETE`).
 
 ---
 
@@ -46,6 +56,7 @@ erDiagram
     SUBJECTS ||--|{ STUDENT_MARKS : "evaluated under"
 
     ACADEMIC_PERIODS ||--o{ COURSE_ENROLLMENTS : "structures"
+    ACADEMIC_PERIODS ||--o{ ATTENDANCE_SESSIONS : "schedules for"
     ACADEMIC_PERIODS ||--o{ STUDENT_MARKS : "records for"
 
     TEACHERS |o--o{ STUDENTS : "mentors (optional)"
@@ -59,7 +70,7 @@ erDiagram
     COURSES ||--o{ ATTENDANCE_SESSIONS : "schedules"
     ATTENDANCE_SESSIONS ||--|{ ATTENDANCE_RECORDS : "contains marks"
 
-    COURSE_ENROLLMENTS ||--o{ ATTENDANCE_RECORDS : "validates attendance"
+    COURSE_ENROLLMENTS ||--o{ ATTENDANCE_RECORDS : "validates enrollment"
     STUDENTS ||--o{ ATTENDANCE_RECORDS : "attends"
 
     STUDENTS |o--o| ATTENDANCE : "has summary cache (0..1 until init)"
@@ -141,6 +152,7 @@ erDiagram
     ATTENDANCE_SESSIONS {
         bigint id PK "Session ID"
         string course_code FK "References courses.code"
+        int academic_period_id FK "References academic_periods.id"
         string teacher_id FK "References teachers.id (nullable)"
         date session_date "Date of session"
         int session_slot "Slot 1..10 (permits multi-session/day)"
@@ -154,6 +166,8 @@ erDiagram
         bigint session_id FK "References attendance_sessions.id"
         bigint enrollment_id FK "References course_enrollments.id"
         bigint student_id FK "References students.id"
+        string course_code "Composite FK component"
+        int academic_period_id "Composite FK component"
         string status "Present or Absent"
         string remarks "Notes (nullable)"
         timestamp created_at
@@ -216,7 +230,7 @@ erDiagram
 
 ---
 
-## 3. Entity-Relationship Cardinality & Participation Matrix
+## 3. Comprehensive Entity-Relationship Cardinality & Participation Matrix
 
 | Relationship | Entity 1 | Multiplicity (E1) | Participation (E1) | Entity 2 | Multiplicity (E2) | Participation (E2) | Structural Meaning |
 | :--- | :--- | :---: | :---: | :--- | :---: | :---: | :--- |
@@ -226,7 +240,8 @@ erDiagram
 | **Subject Categorizes Courses** | `SUBJECTS` | $1$ | Mandatory | `COURSES` | $1..N$ | Mandatory for course | A subject classifies multiple course offerings; each course maps to exactly one subject discipline (`subject_key NOT NULL`). |
 | **Subject Specialization of Faculty** | `SUBJECTS` | $1$ | Mandatory | `TEACHERS` | $1..N$ | Mandatory for teacher | A subject is taught by multiple teachers; each teacher specializes in exactly one subject. |
 | **Subject Evaluation** | `SUBJECTS` | $1$ | Mandatory | `STUDENT_MARKS`| $1..N$ | Mandatory for mark entry | Each evaluation row is scored under one subject; a subject has many score records. |
-| **Academic Period Structures Enrollments**| `ACADEMIC_PERIODS` | $1$ | Mandatory | `COURSE_ENROLLMENTS`| $0..N$ | Mandatory for enrollment | An academic period structures registrations; each enrollment references one term. |
+| **Academic Period Structures Registrations**| `ACADEMIC_PERIODS` | $1$ | Mandatory | `COURSE_ENROLLMENTS`| $0..N$ | Mandatory for enrollment | An academic period structures registrations; each enrollment references one term. |
+| **Academic Period Schedules Sessions** | `ACADEMIC_PERIODS` | $1$ | Mandatory | `ATTENDANCE_SESSIONS`| $0..N$ | Mandatory for session | An academic period frames lecture slots; each session references one term. |
 | **Academic Period Evaluates Marks** | `ACADEMIC_PERIODS` | $1$ | Mandatory | `STUDENT_MARKS`| $0..N$ | Mandatory for mark entry | An academic period frames examinations; each mark entry references one term. |
 | **Faculty Mentorship** | `TEACHERS` | $0..1$ | Optional | `STUDENTS` | $0..N$ | Optional for student | A teacher mentors 0 to many students; a student has at most one faculty mentor (`teacher_id NULL` permitted). |
 | **Course Instruction** | `TEACHERS` | $0..1$ | Optional | `COURSES` | $0..N$ | Optional for course | A teacher instructs 0 to many courses; a course may have an assigned teacher or be unassigned (`teacher_id NULL` permitted). |
@@ -236,7 +251,7 @@ erDiagram
 | **Course Roster** | `COURSES` | $1$ | Mandatory | `COURSE_ENROLLMENTS`| $0..N$ | Mandatory for enrollment | A course enrolls 0 to many students; each enrollment belongs to exactly one course. |
 | **Course Session Scheduling** | `COURSES` | $1$ | Mandatory | `ATTENDANCE_SESSIONS`| $0..N$ | Mandatory for session | A course schedules 0 to many attendance sessions; each session belongs to one course. |
 | **Session Attendance Marks** | `ATTENDANCE_SESSIONS`| $1$ | Mandatory | `ATTENDANCE_RECORDS` | $1..N$ | Mandatory for record | A session contains student attendance marks; each attendance record belongs to one session. |
-| **Enrollment Validation of Attendance** | `COURSE_ENROLLMENTS` | $1$ | Mandatory | `ATTENDANCE_RECORDS` | $0..N$ | Mandatory for record | An enrollment validates attendance; a student can only have attendance recorded if enrolled in that course! |
+| **Enrollment Gating of Attendance** | `COURSE_ENROLLMENTS` | $1$ | Mandatory | `ATTENDANCE_RECORDS` | $0..N$ | Mandatory for record | An enrollment validates attendance; composite FKs guarantee course, period, and student match. |
 | **Student Attendance Sessions** | `STUDENTS` | $1$ | Mandatory | `ATTENDANCE_RECORDS`| $0..N$ | Mandatory for record | A student attends 0 to many lecture sessions; each attendance record references one student. |
 | **Student Attendance Summary** | `STUDENTS` | $1$ | Mandatory | `ATTENDANCE` | $0..1$ | Mandatory for summary | A student has at most one summary cache (structural $0..1$ until initialized); summary requires student (`student_id NOT NULL UNIQUE`). |
 | **Student Legacy Marks Cache** | `STUDENTS` | $1$ | Mandatory | `MARKS` | $0..1$ | Mandatory for summary | A student has at most one physical summary cache (structural $0..1$ until initialized); summary requires student (`student_id NOT NULL UNIQUE`). |
