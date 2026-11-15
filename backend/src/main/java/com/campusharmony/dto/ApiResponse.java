@@ -1,13 +1,14 @@
 package com.campusharmony.dto;
 
 /**
- * Generic response wrapper for simple status responses.
+ * Generic response wrapper for API responses.
+ * Supports both raw ApiResponse usage and typed ApiResponse<T> usage.
  */
-public class ApiResponse {
+public class ApiResponse<T> {
 
     private boolean ok;
     private String message;
-    private Object data;
+    private T data;
 
     public ApiResponse() {
     }
@@ -17,10 +18,18 @@ public class ApiResponse {
         this.message = message;
     }
 
-    public ApiResponse(boolean ok, String message, Object data) {
+    public ApiResponse(boolean ok, String message, T data) {
         this.ok = ok;
         this.message = message;
         this.data = data;
+    }
+
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return new ApiResponse<>(true, message, data);
+    }
+
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(false, message, null);
     }
 
     public boolean isOk() {
@@ -39,11 +48,11 @@ public class ApiResponse {
         this.message = message;
     }
 
-    public Object getData() {
+    public T getData() {
         return data;
     }
 
-    public void setData(Object data) {
+    public void setData(T data) {
         this.data = data;
     }
 }

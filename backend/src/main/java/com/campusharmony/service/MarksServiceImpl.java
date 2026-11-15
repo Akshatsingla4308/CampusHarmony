@@ -26,13 +26,16 @@ public class MarksServiceImpl implements MarksService {
     private final MarksRepository marksRepository;
     private final StudentRepository studentRepository;
     private final ActivityRepository activityRepository;
+    private final com.campusharmony.repository.StudentMarkRepository studentMarkRepository;
 
     public MarksServiceImpl(MarksRepository marksRepository,
                             StudentRepository studentRepository,
-                            ActivityRepository activityRepository) {
+                            ActivityRepository activityRepository,
+                            com.campusharmony.repository.StudentMarkRepository studentMarkRepository) {
         this.marksRepository = marksRepository;
         this.studentRepository = studentRepository;
         this.activityRepository = activityRepository;
+        this.studentMarkRepository = studentMarkRepository;
     }
 
     @Override
@@ -92,5 +95,19 @@ public class MarksServiceImpl implements MarksService {
         ApiResponse response = new ApiResponse(true, "Marks saved successfully");
         response.setData(count);
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<com.campusharmony.entity.StudentMark> getEvaluations(Long studentId) {
+        if (studentId != null) {
+            return studentMarkRepository.findByStudentId(studentId);
+        }
+        return studentMarkRepository.findAll();
+    }
+
+    @Override
+    public com.campusharmony.entity.StudentMark saveEvaluation(com.campusharmony.entity.StudentMark evaluation) {
+        return studentMarkRepository.save(evaluation);
     }
 }

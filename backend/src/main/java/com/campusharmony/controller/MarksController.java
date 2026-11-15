@@ -33,4 +33,16 @@ public class MarksController {
         ApiResponse response = marksService.saveMarks(request);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/evaluations")
+    public ResponseEntity<ApiResponse> getEvaluations(@RequestParam(required = false) Long studentId) {
+        List<com.campusharmony.entity.StudentMark> list = marksService.getEvaluations(studentId);
+        return ResponseEntity.ok(ApiResponse.success("Subject-level marks evaluations retrieved", list));
+    }
+
+    @PostMapping("/evaluations")
+    public ResponseEntity<ApiResponse> saveEvaluation(@RequestBody com.campusharmony.entity.StudentMark evaluation) {
+        com.campusharmony.entity.StudentMark saved = marksService.saveEvaluation(evaluation);
+        return ResponseEntity.ok(ApiResponse.success("Subject evaluation saved and synchronized to summary cache via triggers", saved));
+    }
 }

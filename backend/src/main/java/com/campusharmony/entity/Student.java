@@ -25,6 +25,9 @@ public class Student extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
+    @Column(name = "department_id", nullable = false)
+    private Integer departmentId = 1;
+
     @Column(nullable = false, length = 100)
     private String department;
 
@@ -91,6 +94,14 @@ public class Student extends BaseEntity {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
     }
 
     public String getDepartment() {

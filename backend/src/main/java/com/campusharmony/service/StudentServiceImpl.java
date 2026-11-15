@@ -23,17 +23,20 @@ public class StudentServiceImpl implements StudentService {
     private final MarksRepository marksRepository;
     private final ActivityRepository activityRepository;
     private final DepartmentRepository departmentRepository;
+    private final com.campusharmony.repository.AttendanceRecordRepository attendanceRecordRepository;
 
     public StudentServiceImpl(StudentRepository studentRepository,
                               AttendanceRepository attendanceRepository,
                               MarksRepository marksRepository,
                               ActivityRepository activityRepository,
-                              DepartmentRepository departmentRepository) {
+                              DepartmentRepository departmentRepository,
+                              com.campusharmony.repository.AttendanceRecordRepository attendanceRecordRepository) {
         this.studentRepository = studentRepository;
         this.attendanceRepository = attendanceRepository;
         this.marksRepository = marksRepository;
         this.activityRepository = activityRepository;
         this.departmentRepository = departmentRepository;
+        this.attendanceRecordRepository = attendanceRecordRepository;
     }
 
     @Override
@@ -129,6 +132,9 @@ public class StudentServiceImpl implements StudentService {
                 request.getTeacherId()
         );
 
+        departmentRepository.findByNameIgnoreCase(request.getDepartment().trim())
+                .ifPresentOrElse(d -> student.setDepartmentId(d.getId()), () -> student.setDepartmentId(1));
+
         Student saved = studentRepository.save(student);
 
         // Auto-create initial Attendance entry (0 days)
@@ -156,6 +162,8 @@ public class StudentServiceImpl implements StudentService {
 
         student.setName(request.getName().trim());
         student.setDepartment(request.getDepartment().trim());
+        departmentRepository.findByNameIgnoreCase(request.getDepartment().trim())
+                .ifPresent(d -> student.setDepartmentId(d.getId()));
         student.setSemester(request.getSemester());
         student.setEmail(request.getEmail().trim().toLowerCase());
         student.setPhone(request.getPhone().trim());
@@ -178,6 +186,13 @@ public class StudentServiceImpl implements StudentService {
     public void deleteStudent(Long id) {
         Student student = studentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Student", "id", id));
+
+        // Academic retention check: Prevent silent cascading of historical attendance
+        if (!attendanceRecordRepository.findByStudentId(id).isEmpty()) {
+            throw new BadRequestException(
+                    "Regulatory Compliance Violation: Cannot delete student with active historical attendance records. " +
+                    "Academic audit policy requires archiving student history via sp_archive_and_delete_student prior to purge.");
+        }
 
         // Cascade delete attendance and marks records
         attendanceRepository.deleteByStudentId(id);

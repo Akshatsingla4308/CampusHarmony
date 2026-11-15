@@ -2,6 +2,7 @@ package com.campusharmony.controller;
 
 import com.campusharmony.dto.MarkAttendanceRequest;
 import com.campusharmony.dto.AttendanceMarkResponse;
+import com.campusharmony.entity.Attendance;
 import com.campusharmony.service.AttendanceService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;

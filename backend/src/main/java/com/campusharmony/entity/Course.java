@@ -20,6 +20,12 @@ public class Course {
     @Column(nullable = false, length = 100)
     private String faculty;
 
+    @Column(name = "department_id", nullable = false)
+    private Integer departmentId = 1;
+
+    @Column(name = "subject_key", nullable = false, length = 50)
+    private String subjectKey = "computerScience";
+
     @Column(nullable = false)
     private Integer credits;
 
@@ -78,6 +84,22 @@ public class Course {
 
     public void setFaculty(String faculty) {
         this.faculty = faculty;
+    }
+
+    public Integer getDepartmentId() {
+        return departmentId;
+    }
+
+    public void setDepartmentId(Integer departmentId) {
+        this.departmentId = departmentId;
+    }
+
+    public String getSubjectKey() {
+        return subjectKey;
+    }
+
+    public void setSubjectKey(String subjectKey) {
+        this.subjectKey = subjectKey;
     }
 
     public Integer getCredits() {

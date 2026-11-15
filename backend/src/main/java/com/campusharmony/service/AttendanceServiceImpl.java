@@ -100,33 +100,4 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         return new com.campusharmony.dto.AttendanceMarkResponse(saved, student);
     }
-        Student student = studentRepository.findById(studentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Student", "id", studentId));
-
-        Attendance att = attendanceRepository.findByStudentId(studentId)
-                .orElseGet(() -> new Attendance(studentId, 0, 0, 0, "—"));
-
-        att.setTotalDays(att.getTotalDays() + 1);
-        if (present) {
-            att.setPresentDays(att.getPresentDays() + 1);
-        } else {
-            att.setAbsentDays(att.getAbsentDays() + 1);
-        }
-
-        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        att.setLastMarked(today);
-
-        Attendance saved = attendanceRepository.save(att);
-        saved.setName(student.getName());
-        saved.setRoll(student.getRoll());
-        saved.setDepartment(student.getDepartment());
-
-        activityRepository.save(new Activity(
-                "Attendance updated for " + student.getName(),
-                "attendance",
-                student.getTeacherId()
-        ));
-
-        return saved;
-    }
 }
