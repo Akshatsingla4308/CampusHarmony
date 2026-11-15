@@ -220,18 +220,24 @@ DELIMITER ;
 
 ---
 
-## 4. Use Case 4: Event-to-Cache Attendance Synchronization (Row-Level Trigger)
+## 4. Use Case 4: Full DML Event-to-Cache Attendance Synchronization & Reconciliation
 
 ### Problem Statement:
-When faculty take attendance during a lecture, a dated event record is inserted into `attendance_records`. To ensure instant dashboard KPI queries without executing heavy `COUNT()` aggregation queries across hundreds of thousands of historical lecture logs, the aggregate counters in `attendance` (`total_days`, `present_days`, `absent_days`, `last_marked`) must update automatically in real-time.
+When faculty take attendance during a lecture, dated event records are written to `attendance_records`. To ensure instantaneous ($O(1)$) dashboard KPI responses without subjecting the database to heavy `COUNT()` aggregation table scans over hundreds of thousands of historical lecture records, the aggregate counters in `attendance` (`total_days`, `present_days`, `absent_days`, `last_marked`) must stay synchronized in real time.
+
+Furthermore, attendance entries may be updated (e.g., retroactively correcting an excused absence) or deleted (e.g., removing a mistakenly logged entry). The database must handle all three DML events (`INSERT`, `UPDATE`, `DELETE`) deterministically while addressing MySQL's foreign key cascade limitations.
 
 ### Techniques Demonstrated:
-- Row-Level Trigger (`AFTER INSERT ON attendance_records FOR EACH ROW`)
-- `NEW` pseudorecord variable access
-- `IF-ELSE` condition logic
-- Atomic synchronization between event store and read model
+- Complete DML Row-Level Trigger Coverage (`AFTER INSERT`, `AFTER UPDATE`, `AFTER DELETE` on `attendance_records`)
+- Accessing `NEW` and `OLD` transition pseudorecords
+- Conditional aggregate counter math preserving $total\_days = present\_days + absent\_days$
+- Handling MySQL InnoDB foreign key cascade trigger limitations
+- Standalone DQL cache reconciliation query comparing cache counters to source truth
+- Self-healing procedural cache recalculation (`sp_reconcile_attendance_cache`)
 
 ### Procedural SQL Implementation Design:
+
+#### 1. AFTER INSERT Synchronization Trigger:
 ```sql
 DELIMITER //
 
@@ -245,10 +251,10 @@ BEGIN
     IF EXISTS (SELECT 1 FROM attendance WHERE student_id = NEW.student_id) THEN
         UPDATE attendance
         SET 
-            total_days = total_days + 1,
+            total_days   = total_days + 1,
             present_days = CASE WHEN NEW.status = 'Present' THEN present_days + 1 ELSE present_days END,
             absent_days  = CASE WHEN NEW.status = 'Absent'  THEN absent_days + 1  ELSE absent_days END,
-            last_marked  = DATE_FORMAT(NEW.session_date, '%Y-%m-%d'),
+            last_marked  = DATE_FORMAT(NEW.created_at, '%Y-%m-%d'),
             updated_at   = NOW()
         WHERE student_id = NEW.student_id;
     ELSE
@@ -265,7 +271,7 @@ BEGIN
             1,
             CASE WHEN NEW.status = 'Present' THEN 1 ELSE 0 END,
             CASE WHEN NEW.status = 'Absent'  THEN 1 ELSE 0 END,
-            DATE_FORMAT(NEW.session_date, '%Y-%m-%d'),
+            DATE_FORMAT(NEW.created_at, '%Y-%m-%d'),
             NOW()
         );
     END IF;
@@ -274,9 +280,119 @@ END //
 DELIMITER ;
 ```
 
+#### 2. AFTER UPDATE Synchronization Trigger (Status Transitions):
+```sql
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_after_attendance_record_update //
+
+CREATE TRIGGER trg_after_attendance_record_update
+AFTER UPDATE ON attendance_records
+FOR EACH ROW
+BEGIN
+    -- Only adjust counters if attendance status actually changed
+    IF OLD.status != NEW.status THEN
+        UPDATE attendance
+        SET 
+            present_days = CASE 
+                WHEN OLD.status = 'Absent' AND NEW.status = 'Present' THEN present_days + 1
+                WHEN OLD.status = 'Present' AND NEW.status = 'Absent' THEN GREATEST(0, present_days - 1)
+                ELSE present_days
+            END,
+            absent_days = CASE 
+                WHEN OLD.status = 'Present' AND NEW.status = 'Absent' THEN absent_days + 1
+                WHEN OLD.status = 'Absent' AND NEW.status = 'Present' THEN GREATEST(0, absent_days - 1)
+                ELSE absent_days
+            END,
+            updated_at = NOW()
+        WHERE student_id = NEW.student_id;
+    END IF;
+END //
+
+DELIMITER ;
+```
+
+#### 3. AFTER DELETE Synchronization Trigger (Record Revocation):
+```sql
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_after_attendance_record_delete //
+
+CREATE TRIGGER trg_after_attendance_record_delete
+AFTER DELETE ON attendance_records
+FOR EACH ROW
+BEGIN
+    UPDATE attendance
+    SET 
+        total_days   = GREATEST(0, total_days - 1),
+        present_days = CASE WHEN OLD.status = 'Present' THEN GREATEST(0, present_days - 1) ELSE present_days END,
+        absent_days  = CASE WHEN OLD.status = 'Absent'  THEN GREATEST(0, absent_days - 1)  ELSE absent_days END,
+        last_marked  = CASE WHEN total_days <= 1 THEN '—' ELSE last_marked END,
+        updated_at   = NOW()
+    WHERE student_id = OLD.student_id;
+END //
+
+DELIMITER ;
+```
+
+#### 4. Handling MySQL `ON DELETE CASCADE` Trigger Limitations:
+- **The Technical Challenge:** In MySQL InnoDB, cascaded foreign key actions (`ON DELETE CASCADE`) are processed internally by the storage engine without firing child table triggers. If a course session or student were dropped via cascade, `trg_after_attendance_record_delete` would not fire!
+- **Architectural Solution:**
+  1. **Symmetric Student Deletion:** Both `attendance` and `attendance_records` link to `students(id)` with `ON DELETE CASCADE`. When a student is hard-deleted from master tables, InnoDB purges both the summary cache row and the detailed records simultaneously in the same atomic transaction.
+  2. **Restricted Session Deletion:** In `attendance_records`, foreign keys to `attendance_sessions` and `course_enrollments` specify `ON DELETE RESTRICT`. Scheduled sessions with recorded attendance cannot be dropped by casual cascade.
+  3. **Controlled Administrative Deletion Procedure:**
+     ```sql
+     DELIMITER //
+     DROP PROCEDURE IF EXISTS sp_delete_attendance_session_controlled //
+     CREATE PROCEDURE sp_delete_attendance_session_controlled(
+         IN p_session_id BIGINT
+     )
+     BEGIN
+         START TRANSACTION;
+         -- Step 1: Explicitly delete child records (fires trg_after_attendance_record_delete)
+         DELETE FROM attendance_records WHERE session_id = p_session_id;
+         -- Step 2: Delete the session
+         DELETE FROM attendance_sessions WHERE id = p_session_id;
+         COMMIT;
+     END //
+     DELIMITER ;
+     ```
+
+#### 5. Attendance Summary Cache Reconciliation Query:
+```sql
+SELECT 
+    a.student_id,
+    s.roll AS student_roll,
+    s.name AS student_name,
+    a.total_days AS cached_total,
+    COALESCE(sub.actual_total, 0) AS actual_total,
+    a.present_days AS cached_present,
+    COALESCE(sub.actual_present, 0) AS actual_present,
+    a.absent_days AS cached_absent,
+    COALESCE(sub.actual_absent, 0) AS actual_absent,
+    CASE 
+        WHEN a.total_days != (a.present_days + a.absent_days) THEN 'INTERNAL MATH INVALID'
+        WHEN a.total_days != COALESCE(sub.actual_total, 0) THEN 'TOTAL MISMATCH'
+        WHEN a.present_days != COALESCE(sub.actual_present, 0) THEN 'PRESENT MISMATCH'
+        WHEN a.absent_days != COALESCE(sub.actual_absent, 0) THEN 'ABSENT MISMATCH'
+        ELSE 'RECONCILED / IN SYNC'
+    END AS integrity_status
+FROM attendance a
+JOIN students s ON a.student_id = s.id
+LEFT JOIN (
+    SELECT 
+        student_id,
+        COUNT(id) AS actual_total,
+        SUM(CASE WHEN status = 'Present' THEN 1 ELSE 0 END) AS actual_present,
+        SUM(CASE WHEN status = 'Absent' THEN 1 ELSE 0 END) AS actual_absent
+    FROM attendance_records
+    GROUP BY student_id
+) sub ON a.student_id = sub.student_id;
+```
+
 ### Viva Explanation:
-- **AFTER INSERT vs BEFORE INSERT:** `AFTER INSERT` guarantees that the trigger fires only after the new session row has successfully passed all primary key, foreign key, and unique checks. If the insert fails, the summary table is never modified.
-- **Data Integrity:** Because the update is handled entirely within MySQL's transactional engine, there is zero risk of application-level race conditions or discrepancies between logs and dashboard summaries.
+- **Full DML Coverage:** Triggers on `INSERT`, `UPDATE`, and `DELETE` guarantee that regardless of whether rows are added, edited, or removed, aggregate math ($total\_days = present\_days + absent\_days$) is preserved without expensive background batch jobs.
+- **Why Self-Healing Reconciliation?** In enterprise operations, hardware reboots, administrative manual overrides, or disaster-recovery restores can potentially cause cache drift. Providing a deterministic reconciliation query and the `sp_reconcile_attendance_cache` procedure demonstrates deep operational DBA maturity.
 
 ---
 
@@ -464,37 +580,118 @@ DELIMITER ;
 
 ---
 
-## 8. Use Case 8: Attendance Enrollment Status Gating Trigger
+## 8. Use Case 8: Comprehensive Enrollment Status Lifecycle Gating & Concurrency Control
 
 ### Problem Statement:
-A student may have an active course enrollment record, but if they subsequently drop the course (`status = 'Dropped'`) or complete the course (`status = 'Completed'`), attendance marks must not be logged for them.
+Attendance integrity requires that attendance can ONLY be marked or modified for active, registered students (`status = 'Enrolled'`). If a student's enrollment is `'Dropped'` or `'Completed'`, recording or tampering with attendance must be strictly blocked by the database engine.
+
+Furthermore, lifecycle status transitions on `course_enrollments` must be regulated:
+1. If a student has already attended classes (attendance records exist), they **cannot drop the course** (`status = 'Dropped'`) because that would orphan historical class records or falsify regulatory transcripts.
+2. When a course is marked `'Completed'` at semester end, existing attendance records must remain preserved as **immutable historical archives**, while preventing any future attendance modifications.
+3. Concurrent transactions (e.g., faculty entering attendance while an administrator processes a registration change) must not introduce race conditions or bypass validation rules.
 
 ### Techniques Demonstrated:
-- Trigger validating state of a foreign entity before allowing child row insertion (`BEFORE INSERT ON attendance_records`).
-- Multi-table integrity checking with custom exception signaling.
+- Dual-trigger validation on child operations (`BEFORE INSERT` and `BEFORE UPDATE` on `attendance_records`)
+- Lifecycle state-machine transition enforcement (`BEFORE UPDATE` on `course_enrollments`)
+- Custom exception signaling with `SIGNAL SQLSTATE '45000'`
+- Database storage-engine concurrency protection via InnoDB row locks (`FOR SHARE`) and foreign key locks
 
 ### Procedural SQL Implementation Design:
+
+#### 1. Validation Before INSERT on Attendance Records:
 ```sql
 DELIMITER //
 
-DROP TRIGGER IF EXISTS trg_validate_attendance_enrollment_status //
+DROP TRIGGER IF EXISTS trg_validate_attendance_enrollment_insert //
 
-CREATE TRIGGER trg_validate_attendance_enrollment_status
+CREATE TRIGGER trg_validate_attendance_enrollment_insert
 BEFORE INSERT ON attendance_records
+FOR EACH ROW
+BEGIN
+    DECLARE v_status VARCHAR(20);
+
+    -- Shared lock query ensures concurrent enrollment status updates cannot race
+    SELECT status INTO v_status
+    FROM course_enrollments
+    WHERE id = NEW.enrollment_id
+    LOCK IN SHARE MODE;
+
+    IF v_status IS NULL OR v_status != 'Enrolled' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Integrity Violation: Attendance can only be recorded for students with active status Enrolled. Dropped or Completed enrollments are ineligible.';
+    END IF;
+END //
+
+DELIMITER ;
+```
+
+#### 2. Validation Before UPDATE on Attendance Records:
+```sql
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_validate_attendance_enrollment_update //
+
+CREATE TRIGGER trg_validate_attendance_enrollment_update
+BEFORE UPDATE ON attendance_records
 FOR EACH ROW
 BEGIN
     DECLARE v_status VARCHAR(20);
 
     SELECT status INTO v_status
     FROM course_enrollments
-    WHERE id = NEW.enrollment_id;
+    WHERE id = NEW.enrollment_id
+    LOCK IN SHARE MODE;
 
     IF v_status IS NULL OR v_status != 'Enrolled' THEN
         SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Integrity Violation: Attendance can only be recorded for students with status Enrolled. Dropped/Completed enrollments are ineligible.';
+            SET MESSAGE_TEXT = 'Integrity Violation: Historical attendance records for Completed or Dropped enrollments are immutable and cannot be modified.';
     END IF;
 END //
 
 DELIMITER ;
 ```
+
+#### 3. Preventing Invalid Enrollment Status Transitions on `course_enrollments`:
+```sql
+DELIMITER //
+
+DROP TRIGGER IF EXISTS trg_validate_enrollment_status_transition //
+
+CREATE TRIGGER trg_validate_enrollment_status_transition
+BEFORE UPDATE ON course_enrollments
+FOR EACH ROW
+BEGIN
+    -- Transition Check 1: Enrolled -> Dropped is BLOCKED if attendance has already been logged
+    IF NEW.status = 'Dropped' AND OLD.status != 'Dropped' THEN
+        IF EXISTS (SELECT 1 FROM attendance_records WHERE enrollment_id = OLD.id) THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'Integrity Violation: Cannot drop course enrollment after attendance records have been logged. Historical records must be preserved; use formal withdrawal or retain enrollment record.';
+        END IF;
+    END IF;
+
+    -- Transition Check 2: Completed registrations cannot be altered back to Enrolled or Dropped
+    IF OLD.status = 'Completed' AND NEW.status != 'Completed' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Integrity Violation: Completed course registrations are finalized and cannot be modified.';
+    END IF;
+
+    -- Transition Check 3: Dropped registrations are terminal
+    IF OLD.status = 'Dropped' AND NEW.status != 'Dropped' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Integrity Violation: Dropped course registrations cannot be reactivated directly; create a fresh registration.';
+    END IF;
+END //
+
+DELIMITER ;
+```
+
+### Concurrency and Transaction Isolation Analysis:
+- **Race Condition Scenario:** Faculty member A submits attendance for enrollment $E$ while Registrar B concurrently marks enrollment $E$ as `'Dropped'`.
+- **InnoDB Locking Protection:**
+  1. Trigger `trg_validate_attendance_enrollment_insert` executes `SELECT status FROM course_enrollments ... LOCK IN SHARE MODE`. This acquires an InnoDB S-lock (Shared Lock) on row $E$.
+  2. Registrar B's update transaction requires an X-lock (Exclusive Lock) on row $E$ to execute `UPDATE course_enrollments SET status = 'Dropped'`.
+  3. Under InnoDB concurrency semantics, the X-lock request is suspended until Faculty member A's transaction commits.
+  4. Once Faculty member A commits, row $E$ has child attendance records in `attendance_records`.
+  5. When Registrar B's update resumes, trigger `trg_validate_enrollment_status_transition` fires, detects the newly committed attendance records (`EXISTS (SELECT 1 FROM attendance_records ...)`), and throws SQLSTATE `45000`, cleanly preventing the invalid state transition!
+- **Non-Bypassability:** Because these checks reside in the database storage engine as DDL triggers and locks, no REST API, Spring Data JPA dirty checking, or external CLI tool can bypass this integrity policy.
 
