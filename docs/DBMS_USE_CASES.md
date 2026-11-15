@@ -311,6 +311,12 @@ BEGIN
             SET MESSAGE_TEXT = 'Validation Error: marks_obtained cannot exceed max_marks.';
     END IF;
 
+    -- Validation 3: Exam type must be from the standardized academic categories
+    IF NEW.exam_type NOT IN ('Internal', 'Midterm', 'Endterm') THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Validation Error: exam_type must be Internal, Midterm, or Endterm.';
+    END IF;
+
     -- Auto-calculate letter grade using stored function
     SET NEW.grade = fn_calculate_grade(NEW.marks_obtained, NEW.max_marks);
 END //
@@ -349,6 +355,7 @@ DROP PROCEDURE IF EXISTS sp_batch_enroll_student_with_transaction //
 CREATE PROCEDURE sp_batch_enroll_student_with_transaction(
     IN p_roll VARCHAR(30),
     IN p_name VARCHAR(100),
+    IN p_department_id INT,
     IN p_department VARCHAR(100),
     IN p_semester INT,
     IN p_email VARCHAR(120),
@@ -369,11 +376,11 @@ BEGIN
     -- Begin the atomic ACID transaction
     START TRANSACTION;
 
-    -- Step 1: Insert into students
+    -- Step 1: Insert into students with normalized department_id FK
     INSERT INTO students (
-        roll, name, department, semester, email, phone, status, gender, created_at
+        roll, name, department_id, department, semester, email, phone, status, gender, created_at
     ) VALUES (
-        p_roll, p_name, p_department, p_semester, p_email, p_phone, 'Active', 'Other', NOW()
+        p_roll, p_name, p_department_id, p_department, p_semester, p_email, p_phone, 'Active', 'Other', NOW()
     );
 
     SET v_new_student_id = LAST_INSERT_ID();

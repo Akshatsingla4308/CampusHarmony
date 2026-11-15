@@ -1,262 +1,241 @@
-# CAMPUS HARMONY — RELATIONAL DATABASE DESIGN & NORMALIZATION ANALYSIS
+# CAMPUS HARMONY — RELATIONAL DATABASE DESIGN & NORMALIZATION ANALYSIS (REVISED PHASE 2)
 
 **Course:** Database Management Systems (24CSE0209)  
 **Evaluation:** Project-Based Evaluation (50 Marks)  
 **Database Engine:** MySQL Server 8.0+ (InnoDB Storage Engine)  
+**Revision:** Version 2.0 (Post-Review Academic Alignment)  
 
 ---
 
 ## 1. Relational Mapping from Conceptual ER Model
 
-The conceptual ER model maps to normalized relational tables using standard ER-to-Relational conversion rules:
-1. **Strong Entities:** Converted into distinct relational tables (`departments`, `subjects`, `teachers`, `students`, `courses`).
-2. **1:N Binary Relationships:** Represented by placing the Primary Key of the "1" side as a Foreign Key in the "N" side table (e.g., `teacher_id` in `students`, `subject` in `teachers`, `course_code` in `attendance_records`).
-3. **1:1 Binary Relationships:** Represented by placing the primary key of the parent entity as a foreign key with a `UNIQUE` constraint in the child table (e.g., `student_id` in `attendance` and `marks`).
-4. **Weak Entities / Multivalued Attributes:** Normalized into separate dependent relation tables (`attendance_records` for dated sessions, `student_marks` for subject/exam assessments) with composite candidate keys to prevent duplicates.
+The revised conceptual ER model maps to normalized relational tables using standard ER-to-Relational conversion rules:
+1. **Strong Entities:** Converted into distinct relational master tables (`departments`, `subjects`, `teachers`, `students`, `courses`).
+2. **Associative Entities (M:N Binary Relationships):**
+   - The $M:N$ relationship between `STUDENTS` and `COURSES` is realized as an independent associative entity: `course_enrollments`.
+3. **1:N Binary Relationships:** Represented by placing the Primary Key of the "1" side as a Foreign Key in the "N" side table:
+   - `department_id` in `teachers`, `students`, and `courses`.
+   - `subject_key` in `teachers`, `courses`, and `student_marks`.
+   - `teacher_id` in `students`, `courses`, `activities`, and `attendance_records`.
+4. **1:1 Relationships & Participation Clarification:**
+   - A Foreign Key with a `UNIQUE` constraint (such as `attendance.student_id` and `marks.student_id`) enforces at most one child row per student ($0..1$). It **does not** enforce mandatory bidirectional participation at the storage engine level. Until the application or enrollment trigger initializes a summary row, a student exists with 0 attendance/marks rows. This structural $0..1$ relationship is explicitly recognized in the schema.
+5. **Historical Snapshot Entities:**
+   - `defaulter_audit_log` references `students(id)` as a foreign key while deliberately preserving denormalized point-in-time snapshot values (`roll`, `student_name`, `department`, `attendance_percentage`) to ensure historical audit immutability even if master student records are subsequently altered.
 
 ---
 
-## 2. Comprehensive Data Dictionary
+## 2. Updated Comprehensive Data Dictionary
 
 ### Table 1: `departments` (Department Master)
-Stores academic departments.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+Stores academic departments of the institute.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `INT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `name` | `VARCHAR(100)` | No | — | UNIQUE | Full Department Name (e.g. Computer Science) |
-| `code` | `VARCHAR(10)` | No | — | UNIQUE | Abbreviation Code (e.g. CS, IT, EC, ME, CV) |
+| `name` | `VARCHAR(100)` | No | — | UNIQUE, NOT NULL | Full Department Name (e.g. Computer Science) |
+| `code` | `VARCHAR(10)` | No | — | UNIQUE, NOT NULL | Department Abbreviation (e.g. CS, IT, EC, ME, CV) |
 
-### Table 2: `subjects` (Subject Master)
-Defines course subjects offered across curriculum.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+### Table 2: `subjects` (Curricular Subject Master)
+Defines overarching academic subject disciplines evaluated across curricula.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| `subject_key` | `VARCHAR(50)` | No | — | PK | Identifier (e.g. computerScience, mathematics) |
-| `label` | `VARCHAR(100)` | No | — | UNIQUE | Display Title (e.g. Computer Science) |
+| `subject_key` | `VARCHAR(50)` | No | — | PK | Key Identifier (e.g. `computerScience`, `mathematics`) |
+| `label` | `VARCHAR(100)` | No | — | UNIQUE, NOT NULL | Human-readable title (e.g. Computer Science) |
 
 ### Table 3: `teachers` (Faculty Master)
-Stores registered faculty members and their subject specialization.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+Stores faculty members, their employing department, and their subject specialization.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| `id` | `VARCHAR(30)` | No | — | PK | Faculty Identifier (e.g. T-1001) |
-| `name` | `VARCHAR(100)` | No | — | — | Instructor Name |
-| `subject` | `VARCHAR(50)` | No | — | FK -> `subjects.subject_key` | Subject Specialization |
-| `workspace` | `VARCHAR(20)` | No | `'demo'` | — | `'demo'` (shared) or `'own'` (isolated) |
-| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | — | Record creation timestamp |
+| `id` | `VARCHAR(30)` | No | — | PK | Faculty Identifier (e.g. `T-1001`) |
+| `name` | `VARCHAR(100)` | No | — | NOT NULL | Instructor Full Name |
+| `department_id`| `INT` | No | — | FK -> `departments(id)`, NOT NULL | Employing Department |
+| `subject` | `VARCHAR(50)` | No | — | FK -> `subjects(subject_key)`, NOT NULL | Subject Specialization |
+| `workspace` | `VARCHAR(20)` | No | `'demo'` | CHECK (workspace IN ('demo', 'own')) | `'demo'` (shared) or `'own'` (isolated) |
+| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Record creation timestamp |
 
 ### Table 4: `students` (Student Master)
-Master entity for all enrolled students.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+Master entity for enrolled students.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `roll` | `VARCHAR(30)` | No | — | UNIQUE | University Roll Number (e.g. CS-2101) |
-| `name` | `VARCHAR(100)` | No | — | — | Full Student Name |
-| `department` | `VARCHAR(100)` | No | — | Index | Department Name |
-| `semester` | `INT` | No | — | CHECK (1..8) | Academic Semester |
-| `email` | `VARCHAR(120)` | No | — | UNIQUE | Institutional Email |
-| `phone` | `VARCHAR(20)` | No | — | — | Contact Number |
-| `status` | `VARCHAR(20)` | No | `'Active'` | CHECK (Active, Probation, Inactive) | Enrollment Status |
-| `gender` | `VARCHAR(10)` | No | — | CHECK (Male, Female, Other) | Gender |
+| `roll` | `VARCHAR(30)` | No | — | UNIQUE, NOT NULL | University Roll Number (e.g. `CS-2101`) |
+| `name` | `VARCHAR(100)` | No | — | NOT NULL | Full Student Name |
+| `department_id`| `INT` | No | — | FK -> `departments(id)`, NOT NULL | Department Affiliation (Source of Truth) |
+| `department` | `VARCHAR(100)` | No | — | NOT NULL | Legacy Compatibility Name string |
+| `semester` | `INT` | No | — | CHECK (semester BETWEEN 1 AND 8) | Academic Semester |
+| `email` | `VARCHAR(120)` | No | — | UNIQUE, NOT NULL | Institutional Email Address |
+| `phone` | `VARCHAR(20)` | No | — | NOT NULL | Contact Phone Number |
+| `status` | `VARCHAR(20)` | No | `'Active'` | CHECK (status IN ('Active', 'Probation', 'Inactive')) | Enrollment Status |
+| `gender` | `VARCHAR(10)` | No | — | CHECK (gender IN ('Male', 'Female', 'Other')) | Gender |
 | `address` | `VARCHAR(255)` | Yes | NULL | — | Postal Address |
-| `teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers.id` | Mentor/Assigned Faculty |
-| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | — | Enrollment Timestamp |
-| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | — | Last update timestamp |
+| `teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers(id)` (ON DELETE SET NULL) | Optional Faculty Mentor ID |
+| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Enrollment Timestamp |
+| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | NOT NULL | Last Modification Timestamp |
 
 ### Table 5: `courses` (Course Catalogue)
-Courses offered in current and upcoming semesters.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+Operational courses offered in specific semesters with designated syllabus and credits.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
-| `code` | `VARCHAR(20)` | No | — | PK | Course Code (e.g. CS501) |
-| `name` | `VARCHAR(150)` | No | — | — | Full Course Title |
-| `faculty` | `VARCHAR(100)` | No | — | — | Instructor Name |
-| `credits` | `INT` | No | — | CHECK (1..10) | Credit Weight |
-| `semester` | `INT` | No | — | CHECK (1..8) | Semester Course Belongs To |
-| `status` | `VARCHAR(20)` | No | `'Upcoming'` | CHECK (Upcoming, Ongoing, Completed) | Status |
-| `teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers.id` | Assigned Teacher ID |
-| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | — | Creation Timestamp |
+| `code` | `VARCHAR(20)` | No | — | PK | Course Code (e.g. `CS501`) |
+| `name` | `VARCHAR(150)` | No | — | NOT NULL | Course Title |
+| `department_id`| `INT` | No | — | FK -> `departments(id)`, NOT NULL | Department Offering Course |
+| `subject_key` | `VARCHAR(50)` | No | — | FK -> `subjects(subject_key)`, NOT NULL | Parent Subject Discipline |
+| `credits` | `INT` | No | — | CHECK (credits BETWEEN 1 AND 10) | Credit Weight |
+| `semester` | `INT` | No | — | CHECK (semester BETWEEN 1 AND 8) | Semester Course Belongs To |
+| `status` | `VARCHAR(20)` | No | `'Upcoming'` | CHECK (status IN ('Upcoming', 'Ongoing', 'Completed')) | Course Operational Status |
+| `teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers(id)` (ON DELETE SET NULL) | Assigned Faculty Instructor |
+| `faculty` | `VARCHAR(100)` | Yes | NULL | — | Legacy Instructor Name String |
+| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Creation Timestamp |
 
-### Table 6: `attendance` (Summary Cache Entity)
-Aggregate attendance counters for students (supports fast dashboard KPIs and legacy JPA queries).
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+### Table 6: `course_enrollments` (Associative Entity: Student Course Registrations)
+Models student course registrations explicitly and independently of attendance.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `student_id` | `BIGINT` | No | — | UNIQUE, FK -> `students.id` | Student Reference (1:1) |
-| `total_days` | `INT` | No | 0 | CHECK (>= 0) | Total Lectures Held |
-| `present_days` | `INT` | No | 0 | CHECK (>= 0) | Total Lectures Attended |
-| `absent_days` | `INT` | No | 0 | CHECK (>= 0) | Total Lectures Missed |
+| `student_id` | `BIGINT` | No | — | FK -> `students(id)` (ON DELETE CASCADE) | Student Enrolled |
+| `course_code` | `VARCHAR(20)` | No | — | FK -> `courses(code)` (ON DELETE CASCADE) | Course Enrolled |
+| `enrollment_date` | `DATE` | No | (CURRENT_DATE) | NOT NULL | Date of Registration |
+| `status` | `VARCHAR(20)` | No | `'Enrolled'` | CHECK (status IN ('Enrolled', 'Dropped', 'Completed')) | Registration Status |
+| `grade` | `VARCHAR(5)` | Yes | NULL | — | Final Course Grade (if completed) |
+| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Registration Timestamp |
+
+*Constraint:* `UNIQUE KEY uk_student_course (student_id, course_code)` strictly guarantees a student cannot be enrolled twice in the same course.
+
+### Table 7: `attendance_records` (Normalized Dated Lecture Sessions)
+Event-level attendance records tracking every conducted lecture session.
+| Column | Type | Nullable | Default | Constraints | Description |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
+| `student_id` | `BIGINT` | No | — | FK -> `students(id)` (ON DELETE CASCADE) | Student Reference |
+| `course_code` | `VARCHAR(20)` | Yes | NULL | FK -> `courses(code)` (ON DELETE CASCADE) | Course Session |
+| `session_date` | `DATE` | No | — | NOT NULL | Date of Lecture Session |
+| `status` | `ENUM('Present','Absent')`| No | — | NOT NULL | Attendance Status |
+| `session_topic`| `VARCHAR(150)` | Yes | NULL | — | Lecture Topic Covered |
+| `marked_by_teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers(id)` (ON DELETE SET NULL) | Faculty Invigilator Reference |
+| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Entry Timestamp |
+
+*Constraint:* `UNIQUE KEY uk_student_session (student_id, session_date, course_code)` guarantees idempotency, preventing duplicate marks for the same student, course, and date.
+
+### Table 8: `attendance` (Summary Cache Entity)
+Aggregate attendance counters for students (structural $0..1$ relationship until initialized).
+| Column | Type | Nullable | Default | Constraints | Description |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
+| `student_id` | `BIGINT` | No | — | UNIQUE, FK -> `students(id)` (CASCADE) | Student Reference |
+| `total_days` | `INT` | No | 0 | CHECK (total_days >= 0) | Total Lectures Conducted |
+| `present_days` | `INT` | No | 0 | CHECK (present_days >= 0) | Total Lectures Attended |
+| `absent_days` | `INT` | No | 0 | CHECK (absent_days >= 0) | Total Lectures Missed |
 | `last_marked` | `VARCHAR(20)` | Yes | `'—'` | — | Date of last attendance mark |
-| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | — | Last modification timestamp |
+| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | NOT NULL | Modification Timestamp |
 
-### Table 7: `attendance_records` (Normalized Dated Event Log)
-Discrete, event-level attendance records tracking every lecture session.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
-| :--- | :--- | :---: | :---: | :---: | :--- |
-| `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `student_id` | `BIGINT` | No | — | FK -> `students.id` | Student Enrolled |
-| `course_code` | `VARCHAR(20)` | Yes | NULL | FK -> `courses.code` | Course Session |
-| `session_date` | `DATE` | No | — | — | Date of Session |
-| `status` | `ENUM('Present','Absent')`| No | — | — | Attendance State |
-| `session_topic`| `VARCHAR(150)` | Yes | NULL | — | Topic Covered |
-| `marked_by_teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers.id` | Teacher Who Took Session |
-| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | — | Entry Timestamp |
+*Constraint:* `CHECK (present_days + absent_days = total_days)` maintains mathematical sanity.
 
-*Constraint:* `UNIQUE KEY uk_student_session (student_id, session_date, course_code)` strictly guarantees that duplicate attendance cannot be logged for the same student, course, and date.
-
-### Table 8: `student_marks` (Normalized Subject/Exam Evaluation)
+### Table 9: `student_marks` (Normalized Subject/Exam Evaluation)
 Normalized marks table eliminating repeating subject columns.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `student_id` | `BIGINT` | No | — | FK -> `students.id` | Student ID |
-| `subject_key` | `VARCHAR(50)` | No | — | FK -> `subjects.subject_key` | Subject |
-| `exam_type` | `VARCHAR(20)` | No | `'Endterm'` | CHECK (Internal, Midterm, Endterm, Assignment) | Evaluation Category |
-| `marks_obtained` | `DECIMAL(5,2)` | No | — | CHECK (>= 0) | Score Achieved |
-| `max_marks` | `DECIMAL(5,2)` | No | 100.00 | CHECK (> 0) | Maximum Score |
+| `student_id` | `BIGINT` | No | — | FK -> `students(id)` (ON DELETE CASCADE) | Student Reference |
+| `subject_key` | `VARCHAR(50)` | No | — | FK -> `subjects(subject_key)` (RESTRICT) | Curricular Subject Evaluated |
+| `exam_type` | `VARCHAR(20)` | No | `'Endterm'` | CHECK (exam_type IN ('Internal', 'Midterm', 'Endterm')) | Standardized Exam Category |
+| `marks_obtained` | `DECIMAL(5,2)` | No | — | CHECK (marks_obtained >= 0) | Score Obtained |
+| `max_marks` | `DECIMAL(5,2)` | No | 100.00 | CHECK (max_marks > 0) | Maximum Score |
 | `grade` | `VARCHAR(5)` | Yes | NULL | — | Computed Letter Grade (A+, A, B, C, D, F) |
-| `remarks` | `VARCHAR(100)` | Yes | NULL | — | Evaluation Remarks |
-| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | — | Last Update |
+| `remarks` | `VARCHAR(100)` | Yes | NULL | — | Evaluator Remarks |
+| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | NOT NULL | Last Update Timestamp |
 
 *Constraint:* `UNIQUE KEY uk_student_subject_exam (student_id, subject_key, exam_type)` guarantees uniqueness per student per subject per exam.  
 *Constraint:* `CHECK (marks_obtained <= max_marks)` prevents impossible scores.
 
-### Table 9: `marks` (Legacy 5-Subject Summary)
-Maintained for backward compatibility with existing JPA entities.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+### Table 10: `marks` (Legacy 5-Subject Summary)
+Maintained for backward compatibility with existing 5-subject UI screen and JPA repository.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `student_id` | `BIGINT` | No | — | UNIQUE, FK -> `students.id` | Student Reference (1:1) |
-| `mathematics` | `INT` | Yes | NULL | CHECK (0..100) | Mathematics Score |
-| `physics` | `INT` | Yes | NULL | CHECK (0..100) | Physics Score |
-| `chemistry` | `INT` | Yes | NULL | CHECK (0..100) | Chemistry Score |
-| `english` | `INT` | Yes | NULL | CHECK (0..100) | English Score |
-| `computer_science` | `INT` | Yes | NULL | CHECK (0..100) | Computer Science Score |
-| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | — | Last Update Timestamp |
+| `student_id` | `BIGINT` | No | — | UNIQUE, FK -> `students(id)` (CASCADE) | Student Reference |
+| `mathematics` | `INT` | Yes | NULL | CHECK (mathematics IS NULL OR (mathematics BETWEEN 0 AND 100)) | Math Score |
+| `physics` | `INT` | Yes | NULL | CHECK (physics IS NULL OR (physics BETWEEN 0 AND 100)) | Physics Score |
+| `chemistry` | `INT` | Yes | NULL | CHECK (chemistry IS NULL OR (chemistry BETWEEN 0 AND 100)) | Chemistry Score |
+| `english` | `INT` | Yes | NULL | CHECK (english IS NULL OR (english BETWEEN 0 AND 100)) | English Score |
+| `computer_science` | `INT` | Yes | NULL | CHECK (computer_science IS NULL OR (computer_science BETWEEN 0 AND 100)) | CS Score |
+| `updated_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP ON UPDATE | NOT NULL | Modification Timestamp |
 
-### Table 10: `activities` (Audit & Feed Log)
+### Table 11: `activities` (Audit & Feed Log)
 Audit log tracking announcements, marks updates, and enrollments.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `text` | `VARCHAR(255)` | No | — | — | Activity Description |
-| `type` | `VARCHAR(50)` | No | `'notice'` | — | Event Type (`notice`, `attendance`, `enroll`, `grade`) |
-| `teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers.id` | Authoring Teacher |
-| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | — | Timestamp of Event |
+| `text` | `VARCHAR(255)` | No | — | NOT NULL | Activity Description |
+| `type` | `VARCHAR(50)` | No | `'notice'` | CHECK (type IN ('notice', 'attendance', 'grade', 'enroll', 'course')) | Event Category |
+| `teacher_id` | `VARCHAR(30)` | Yes | NULL | FK -> `teachers(id)` (ON DELETE SET NULL) | Authoring Faculty ID (nullable) |
+| `created_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Event Timestamp |
 
-### Table 11: `defaulter_audit_log` (Procedural Cursor Output Log)
-Populated dynamically by stored procedure `sp_generate_attendance_defaulter_report`.
-| Column | Type | Nullable | Default | Key / Constraint | Description |
+### Table 12: `defaulter_audit_log` (Procedural Cursor Output Log)
+Audit snapshot log generated dynamically by `sp_generate_attendance_defaulter_report`.
+| Column | Type | Nullable | Default | Constraints | Description |
 | :--- | :--- | :---: | :---: | :---: | :--- |
 | `id` | `BIGINT` | No | AUTO_INCREMENT | PK | Primary Key |
-| `student_id` | `BIGINT` | No | — | — | Student Reference |
-| `roll` | `VARCHAR(30)` | No | — | — | Roll Number |
-| `student_name` | `VARCHAR(100)` | No | — | — | Student Name |
-| `department` | `VARCHAR(100)` | No | — | — | Department |
-| `attendance_percentage` | `DECIMAL(5,2)` | No | — | — | Calculated Attendance % |
-| `classes_needed`| `INT` | No | — | — | Lectures needed to reach 75% |
-| `reported_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | — | Report Run Timestamp |
+| `student_id` | `BIGINT` | No | — | FK -> `students(id)` (ON DELETE CASCADE) | Student Reference |
+| `roll` | `VARCHAR(30)` | No | — | NOT NULL | Snapshot Roll Number |
+| `student_name` | `VARCHAR(100)` | No | — | NOT NULL | Snapshot Student Name |
+| `department` | `VARCHAR(100)` | No | — | NOT NULL | Snapshot Department Name |
+| `attendance_percentage` | `DECIMAL(5,2)` | No | — | NOT NULL | Snapshot Attendance % at Audit Time |
+| `classes_needed`| `INT` | No | — | NOT NULL | Required Consecutive Classes to Reach 75% |
+| `reported_at` | `TIMESTAMP` | No | CURRENT_TIMESTAMP | NOT NULL | Snapshot Generation Timestamp |
 
 ---
 
-## 3. Functional Dependencies and Normalization Analysis
+## 3. Comprehensive Foreign-Key Referential Integrity Matrix
 
-### A. Functional Dependencies ($X \to Y$)
-
-1. **Relation `students`:**
-   - $\text{id} \to \{\text{roll}, \text{name}, \text{department}, \text{semester}, \text{email}, \text{phone}, \text{status}, \text{gender}, \text{address}, \text{teacher\_id}\}$
-   - $\text{roll} \to \{\text{id}, \text{name}, \text{department}, \text{semester}, \text{email}, \text{phone}, \text{status}, \text{gender}, \text{address}, \text{teacher\_id}\}$
-   - $\text{email} \to \{\text{id}, \text{roll}, \text{name}, \text{department}, \text{semester}, \text{phone}, \text{status}, \text{gender}, \text{address}, \text{teacher\_id}\}$
-   - *Candidate Keys:* $\{\text{id}\}$, $\{\text{roll}\}$, $\{\text{email}\}$.
-
-2. **Relation `departments`:**
-   - $\text{id} \to \{\text{name}, \text{code}\}$
-   - $\text{code} \to \{\text{id}, \text{name}\}$
-   - $\text{name} \to \{\text{id}, \text{code}\}$
-   - *Candidate Keys:* $\{\text{id}\}$, $\{\text{code}\}$, $\{\text{name}\}$.
-
-3. **Relation `courses`:**
-   - $\text{code} \to \{\text{name}, \text{faculty}, \text{credits}, \text{semester}, \text{status}, \text{teacher\_id}\}$
-   - *Candidate Key:* $\{\text{code}\}$.
-
-4. **Relation `attendance_records`:**
-   - $\{\text{student\_id}, \text{session\_date}, \text{course\_code}\} \to \{\text{id}, \text{status}, \text{session\_topic}, \text{marked\_by\_teacher\_id}, \text{created\_at}\}$
-   - $\text{id} \to \{\text{student\_id}, \text{course\_code}, \text{session\_date}, \text{status}, \text{session\_topic}, \text{marked\_by\_teacher\_id}, \text{created\_at}\}$
-   - *Candidate Keys:* $\{\text{id}\}$, $\{\text{student\_id}, \text{session\_date}, \text{course\_code}\}$.
-
-5. **Relation `student_marks`:**
-   - $\{\text{student\_id}, \text{subject\_key}, \text{exam\_type}\} \to \{\text{id}, \text{marks\_obtained}, \text{max\_marks}, \text{grade}, \text{remarks}, \text{updated\_at}\}$
-   - $\text{id} \to \{\text{student\_id}, \text{subject\_key}, \text{exam\_type}, \text{marks\_obtained}, \text{max\_marks}, \text{grade}, \text{remarks}, \text{updated\_at}\}$
-   - *Candidate Keys:* $\{\text{id}\}$, $\{\text{student\_id}, \text{subject\_key}, \text{exam\_type}\}$.
+| Child Table | Foreign Key Column | Parent Table (Referenced Column) | ON UPDATE | ON DELETE | Academic Rationale |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| `teachers` | `department_id` | `departments(id)` | CASCADE | RESTRICT | A department cannot be deleted if faculty members belong to it. |
+| `teachers` | `subject` | `subjects(subject_key)` | CASCADE | RESTRICT | A subject cannot be deleted if teachers are specialized in it. |
+| `students` | `department_id` | `departments(id)` | CASCADE | RESTRICT | A department cannot be deleted if students are currently enrolled in it. |
+| `students` | `teacher_id` | `teachers(id)` | CASCADE | SET NULL | If a faculty mentor leaves, students remain enrolled; mentor reference is cleared. |
+| `courses` | `department_id` | `departments(id)` | CASCADE | RESTRICT | A department cannot be deleted while offering courses. |
+| `courses` | `subject_key` | `subjects(subject_key)` | CASCADE | RESTRICT | A curricular subject discipline cannot be deleted if active courses map to it. |
+| `courses` | `teacher_id` | `teachers(id)` | CASCADE | SET NULL | If a teacher leaves, the course remains in the catalogue and becomes unassigned. |
+| `course_enrollments`| `student_id` | `students(id)` | CASCADE | CASCADE | Deleting a student record deletes their course registrations. |
+| `course_enrollments`| `course_code` | `courses(code)` | CASCADE | CASCADE | Deleting a course purges registrations for that course. |
+| `attendance` | `student_id` | `students(id)` | CASCADE | CASCADE | Deleting a student removes their summary attendance counters. |
+| `attendance_records`| `student_id` | `students(id)` | CASCADE | CASCADE | Deleting a student purges all individual session attendance logs. |
+| `attendance_records`| `course_code` | `courses(code)` | CASCADE | CASCADE | Deleting a course purges attendance sessions held for that course. |
+| `attendance_records`| `marked_by_teacher_id` | `teachers(id)` | CASCADE | SET NULL | If a teacher leaves, historic session attendance records remain intact. |
+| `marks` | `student_id` | `students(id)` | CASCADE | CASCADE | Deleting a student removes their legacy marks row. |
+| `student_marks` | `student_id` | `students(id)` | CASCADE | CASCADE | Deleting a student removes all subject evaluation marks. |
+| `student_marks` | `subject_key` | `subjects(subject_key)` | CASCADE | RESTRICT | A subject cannot be removed while student marks exist under it. |
+| `activities` | `teacher_id` | `teachers(id)` | CASCADE | SET NULL | If a teacher leaves, administrative notices authored by them remain visible. |
+| `defaulter_audit_log`| `student_id`| `students(id)` | CASCADE | CASCADE | Deleting a student purges audit log snapshots referencing that student. |
 
 ---
 
-### B. Normalization Step-by-Step Progression
+## 4. Normalization Step-by-Step Progression (1NF to BCNF)
 
-#### Step 1: First Normal Form (1NF)
-- **1NF Definition:** A relation is in 1NF if and only if all underlying domains contain only atomic (indivisible) values, and there are no repeating groups or multivalued columns.
-- **Flaw in baseline schema:** The legacy `marks` table stored repeating columns for subjects: `mathematics`, `physics`, `chemistry`, `english`, `computer_science`. Adding a 6th subject would require DDL schema alteration (`ALTER TABLE`), violating relational principles.
-- **Resolution to 1NF:** We introduce `student_marks`, where each tuple represents an atomic evaluation of one student, in one subject, for one exam type (`marks_obtained`, `max_marks`). Every field contains a single atomic scalar value.
+### Functional Dependencies ($X \to Y$):
+1. **`departments`:** $\text{id} \to \{\text{name}, \text{code}\}$; $\text{code} \to \{\text{id}, \text{name}\}$; $\text{name} \to \{\text{id}, \text{code}\}$.
+2. **`subjects`:** $\text{subject\_key} \to \{\text{label}\}$.
+3. **`teachers`:** $\text{id} \to \{\text{name}, \text{department\_id}, \text{subject}, \text{workspace}, \text{created\_at}\}$.
+4. **`students`:** $\text{id} \to \{\text{roll}, \text{name}, \text{department\_id}, \text{semester}, \text{email}, \text{phone}, \text{status}, \text{gender}, \text{address}, \text{teacher\_id}\}$; $\text{roll} \to \dots$; $\text{email} \to \dots$.
+5. **`courses`:** $\text{code} \to \{\text{name}, \text{department\_id}, \text{subject\_key}, \text{credits}, \text{semester}, \text{status}, \text{teacher\_id}\}$.
+6. **`course_enrollments`:** $\{\text{student\_id}, \text{course\_code}\} \to \{\text{id}, \text{enrollment\_date}, \text{status}, \text{grade}, \text{created\_at}\}$.
+7. **`attendance_records`:** $\{\text{student\_id}, \text{session\_date}, \text{course\_code}\} \to \{\text{id}, \text{status}, \text{session\_topic}, \text{marked\_by\_teacher\_id}, \text{created\_at}\}$.
+8. **`student_marks`:** $\{\text{student\_id}, \text{subject\_key}, \text{exam\_type}\} \to \{\text{id}, \text{marks\_obtained}, \text{max\_marks}, \text{grade}, \text{remarks}, \text{updated\_at}\}$.
 
-#### Step 2: Second Normal Form (2NF)
-- **2NF Definition:** A relation is in 2NF if it is in 1NF and no non-prime attribute is partially dependent on any candidate key (i.e., no partial dependency $X \to Y$ where $X \subset \text{Candidate Key}$).
-- **Analysis:**
-  - For `student_marks`, candidate key is $\{\text{student\_id}, \text{subject\_key}, \text{exam\_type}\}$.
-  - Non-prime attributes: `marks_obtained`, `max_marks`, `grade`, `remarks`.
-  - None of these attributes depend on only `student_id` or only `subject_key`. You cannot determine `marks_obtained` without knowing which student, which subject, AND which exam.
-  - Thus, all non-prime attributes are fully functionally dependent on the entire composite key.
-- **Conclusion:** `student_marks` and `attendance_records` strictly satisfy 2NF.
-
-#### Step 3: Third Normal Form (3NF)
-- **3NF Definition:** A relation is in 3NF if it is in 2NF and there is no transitive dependency of non-prime attributes on any candidate key (i.e., for every non-trivial $X \to Y$, either $X$ is a superkey or $Y$ is a prime attribute).
-- **Analysis:**
-  - In `students`, all attributes (`name`, `semester`, `phone`, `email`) depend directly on `id`/`roll`.
-  - In `student_marks`, `grade` is functionally derived from `marks_obtained` and `max_marks`. Storing grade without constraints could introduce an update anomaly (e.g. 95% marked as 'F'). We resolve this by computing `grade` dynamically via deterministic stored function `fn_calculate_grade()` enforced through a `BEFORE INSERT/UPDATE` trigger.
-- **Conclusion:** The database satisfies 3NF.
-
-#### Step 4: Boyce-Codd Normal Form (BCNF)
-- **BCNF Definition:** A relation is in BCNF if for every non-trivial functional dependency $X \to Y$, $X$ is a superkey.
-- **Analysis:**
-  - In `students`:
-    - $\text{id} \to Y$ ($X=\text{id}$ is a candidate key / superkey).
-    - $\text{roll} \to Y$ ($X=\text{roll}$ is a candidate key / superkey).
-    - $\text{email} \to Y$ ($X=\text{email}$ is a candidate key / superkey).
-  - In `departments`:
-    - $\text{id} \to Y$, $\text{code} \to Y$, $\text{name} \to Y$. Every determinant is a candidate key.
-  - In `student_marks`:
-    - $\{\text{student\_id}, \text{subject\_key}, \text{exam\_type}\}$ and $\{\text{id}\}$ are the only determinants, and both are superkeys.
-- **Conclusion:** The normalized schema satisfies BCNF.
-
----
-
-## 4. Dual-Model Synchronization (Zero-Regression Strategy)
-
-To ensure earlier evaluated work, existing REST controllers, and frontend pages continue functioning without modification, we implement automatic synchronization between normalized event logs and summary caches:
-
-```mermaid
-flowchart LR
-    A["Event Action: Teacher marks attendance"] --> B["INSERT into attendance_records (Dated Event)"]
-    B --> C["Trigger: trg_after_attendance_record_insert"]
-    C --> D["UPDATE attendance (total_days, present_days, absent_days, last_marked)"]
-    D --> E["Existing REST APIs & UI Dashboard read summary instantly with 0 ms lag"]
-```
-
-Similarly, for marks:
-```mermaid
-flowchart LR
-    F["Teacher enters Subject Marks"] --> G["INSERT/UPDATE into student_marks (Normalized 3NF)"]
-    G --> H["Trigger: trg_after_student_marks_sync"]
-    H --> I["UPDATE legacy marks table (e.g. computer_science = NEW.marks_obtained)"]
-    I --> J["Existing Marks Page & Dashboard calculate totals with 100% data integrity"]
-```
-
----
-
-## 5. Indexing Architecture & Query Performance
-
-| Table | Index Name | Indexed Columns | Index Type | Optimization Target / Rationale |
-| :--- | :--- | :--- | :---: | :--- |
-| `students` | `idx_students_dept` | `(department)` | B-Tree | Optimizes department filter dropdown on Students page. |
-| `students` | `idx_students_sem` | `(semester)` | B-Tree | Speeds up semester filtering and batch grade calculations. |
-| `students` | `idx_students_status` | `(status)` | B-Tree | Speeds up active vs probation student queries. |
-| `courses` | `idx_courses_sem` | `(semester)` | B-Tree | Optimizes course catalogue browsing per semester. |
-| `attendance_records` | `idx_att_rec_student_date` | `(student_id, session_date)` | B-Tree | Optimizes historical attendance timeline retrieval for student profiles. |
-| `student_marks` | `idx_sm_student` | `(student_id)` | B-Tree | Accelerates grade sheet and report card generation. |
-| `activities` | `idx_activities_time` | `(created_at DESC)` | B-Tree | Accelerates recent activity feed query on dashboard (`ORDER BY created_at DESC LIMIT 10`). |
+### Normal Forms Justification:
+- **1NF:**
+  - All attributes contain atomic, scalar values (no multivalued sets, nested structures, or repeating column lists).
+  - Legacy repeating marks columns (`math`, `physics`, `chem`, `eng`, `cs`) are normalized into atomic records in `student_marks`.
+  - Every table has a declared primary key.
+- **2NF:**
+  - The relations are in 1NF and contain **no partial functional dependencies**.
+  - In composite-key relations (`course_enrollments`, `attendance_records`, `student_marks`), all non-prime attributes depend on the entire candidate key, never a proper subset:
+    - In `course_enrollments`, `enrollment_date` and `status` depend on BOTH `student_id` and `course_code`.
+    - In `student_marks`, `marks_obtained` cannot be determined by `student_id` alone or `subject_key` alone; all three components (`student_id`, `subject_key`, `exam_type`) are strictly required.
+- **3NF:**
+  - The relations are in 2NF and contain **no transitive functional dependencies** ($X \to Y \to Z$ where $X$ is a key and $Y$ is non-prime).
+  - Faculty details are not duplicated in `courses`; only `teacher_id` is stored.
+  - Department code/name are not duplicated in `students`; only `department_id` is stored.
+  - Grade is derived from `(marks_obtained / max_marks)` and enforced via trigger/function.
+- **BCNF:**
+  - For every non-trivial functional dependency $X \to Y$, $X$ is a superkey.
+  - In all relations (`departments`, `subjects`, `teachers`, `students`, `courses`, `course_enrollments`, `attendance_records`, `student_marks`), the determinants are either primary keys or unique candidate keys.
