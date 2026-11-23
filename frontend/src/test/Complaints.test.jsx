@@ -223,8 +223,8 @@ describe("Student Complaints & Grievance Management Page", () => {
     render(<ComplaintsPage />);
 
     expect(await screen.findByText("Institutional Grievance Management Dashboard")).toBeInTheDocument();
+    expect(await screen.findByText("Aman Kumar")).toBeInTheDocument();
     expect(screen.getByText("Open Actions")).toBeInTheDocument();
-    expect(screen.getByText("Aman Kumar")).toBeInTheDocument();
 
     const reviewBtn = screen.getByRole("button", { name: /Review & Action/i });
     fireEvent.click(reviewBtn);

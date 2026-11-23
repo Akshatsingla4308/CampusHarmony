@@ -32,23 +32,21 @@ export function Navbar({ menuOpen, toggleMenu }) {
   };
 
   const getPageTitle = (path) => {
-    if (path === "/") return "Dashboard";
-    if (path.startsWith("/students")) return "Students";
-    if (path.startsWith("/teachers")) return "Teachers";
-    if (path.startsWith("/departments")) return "Departments";
-    if (path.startsWith("/subjects")) return "Subjects";
-    if (path.startsWith("/courses")) return "Courses";
-    if (path.startsWith("/attendance")) return "Attendance";
-    if (path === "/timetable") return "Timetable";
-    if (path === "/complaints") return "Complaints";
-    if (path.startsWith("/marks")) return "Marks and assessments";
+    if (path === "/") return "Institutional Dashboard";
+    if (path.startsWith("/students")) return "Student Directory & Admissions";
+    if (path.startsWith("/teachers")) return "Faculty & Staff Directory";
+    if (path.startsWith("/departments")) return "Academic Departments";
+    if (path.startsWith("/subjects")) return "Curriculum Subjects";
+    if (path.startsWith("/courses")) return "Courses & Academic Offerings";
+    if (path.startsWith("/attendance")) return "Lecture Attendance & Sessions";
+    if (path === "/timetable") return "Master Timetable & Scheduling";
+    if (path === "/complaints") return "Student Grievance Management";
+    if (path.startsWith("/marks")) return "Examinations, Marks & Evaluations";
     if (path.startsWith("/transcript")) return "Official Academic Transcripts";
-    if (path.startsWith("/defaulters")) return "Attendance reports";
-    if (path.startsWith("/activities")) return "Extracurricular Activities";
-    if (path.startsWith("/dbms-demo")) return "DBMS Advanced Demonstrations (50 Marks)";
-    if (path.startsWith("/java-demo")) return "Programming in Java CHO Demonstration (25 Marks)";
-    if (path.startsWith("/profile")) return "User Profile & Security";
-    return "Campus Harmony ERP";
+    if (path.startsWith("/defaulters")) return "Attendance Analytics & Defaulters";
+    if (path.startsWith("/activities")) return "Campus Activities & Mentorship";
+    if (path.startsWith("/profile")) return "Profile & Account Security";
+    return "CampusHarmony ERP";
   };
 
   return (

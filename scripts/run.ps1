@@ -60,6 +60,11 @@ if ($adminPass -eq 'your_secure_admin_password_here') {
     [Console]::Error.WriteLine("Please edit .env and replace it with your actual secure password.")
     exit 1
 }
+if ($adminPass.Length -lt 12) {
+    [Console]::Error.WriteLine("[SECURITY ERROR] CAMPUS_ADMIN_PASSWORD must be at least 12 characters long for enterprise security.")
+    [Console]::Error.WriteLine("Please edit .env and configure an administrator password with 12 or more characters.")
+    exit 1
+}
 
 if ([string]::IsNullOrWhiteSpace($env:CAMPUS_DB_USER)) { $env:CAMPUS_DB_USER = 'root' }
 if ([string]::IsNullOrWhiteSpace($env:CAMPUS_ADMIN_LOGIN)) { $env:CAMPUS_ADMIN_LOGIN = 'admin' }

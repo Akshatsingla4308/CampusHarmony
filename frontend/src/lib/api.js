@@ -233,11 +233,14 @@ export const api = {
     addResponse: (id, data) => request(`/academic/admin/complaints/${id}/response`, { method: "POST", body: data }),
   },
 
-  // Activities
+  // Activities & Dashboard
   activities: {
     getAll: () => request("/activities"),
     create: (activity) => request("/activities", { method: "POST", body: activity }),
     delete: (id) => request(`/activities/${id}`, { method: "DELETE" }),
+  },
+  dashboard: {
+    getActivity: () => request("/activities"),
   },
 
   // DBMS Demonstrations (Cursors, Stored Procedures, Triggers, Views)
