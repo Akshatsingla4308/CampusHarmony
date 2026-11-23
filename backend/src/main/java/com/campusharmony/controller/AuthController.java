@@ -16,8 +16,16 @@ public class AuthController implements ApplicationRunner {
     private final Environment env;
     public AuthController(JdbcTemplate db,Environment env){this.db=db;this.env=env;}
     public void run(ApplicationArguments args) {
-        String login=env.getProperty("CAMPUS_ADMIN_LOGIN"), password=env.getProperty("CAMPUS_ADMIN_PASSWORD");
-        if(login!=null && !login.isBlank() && db.queryForObject("SELECT COUNT(*) FROM accounts WHERE role='admin'",Integer.class)==0)
+        String login = env.getProperty("campus.admin.login");
+        if (login == null || login.isBlank()) login = env.getProperty("CAMPUS_ADMIN_LOGIN");
+        if (login == null || login.isBlank()) login = System.getenv("CAMPUS_ADMIN_LOGIN");
+        if (login == null || login.isBlank()) login = "admin";
+
+        String password = env.getProperty("campus.admin.password");
+        if (password == null || password.isBlank()) password = env.getProperty("CAMPUS_ADMIN_PASSWORD");
+        if (password == null || password.isBlank()) password = System.getenv("CAMPUS_ADMIN_PASSWORD");
+
+        if(password!=null && !password.isBlank() && db.queryForObject("SELECT COUNT(*) FROM accounts WHERE role='admin'",Integer.class)==0)
             db.update("INSERT INTO accounts(login,display_name,role,password_hash) VALUES(?,?,'admin',?)",login,login,Passwords.hash(password));
     }
     public record Credentials(@NotBlank @Size(max=80) String identifier,@NotBlank @Size(max=256) String password){}
