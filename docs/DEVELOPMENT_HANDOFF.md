@@ -761,5 +761,84 @@ Executed via browser automation against `http://127.0.0.1:5173` and `http://127.
 | **Backend Integration Baseline** | Disposable MySQL | 5 workflow suites (`FoundationWorkflowIT`, `MarksWorkflowIT`, `TimetableWorkflowIT`, `AnalyticsWorkflowIT`, `ComplaintWorkflowIT`) | **5 passed, 0 failures (`BUILD SUCCESS`)** (Verified baseline) |
 | **Live Browser Workflow** | Chromium / Webview | Teacher attendance/marks correction + Student report/timetable verification | **100% verified** |
 
+---
+
+## Phase 4D — Final Quality Assurance, Security Review & Submission Readiness (COMPLETED)
+
+### 1. Attendance & Marks Data-Integrity Audit
+- **Attendance Incomplete Submission Protection**: Verified that initial attendance submission strictly requires an attendance status (`Present` or `Absent`) for every enrolled student. Submitting with unrecorded students is blocked client-side and rejected by backend integrity validation (`HttpStatus.CONFLICT` / `roster.size() == statuses.size()`).
+- **Roster Search & Bulk Marking Safety**: Verified that search filtering (`filterQuery`) operates as a view filter only; bulk operations (`Mark All Present`, `Mark All Absent`, `Clear`) and submission payloads preserve all enrolled students regardless of search filter state.
+- **Marks Redundant Audit Suppression**: In `AcademicMarksController.java`, updated `saveMarks` to compare incoming scores and remarks against existing database records. Unchanged marks are not rewritten and do not generate spurious rows in `assessment_marks_audit`.
+- **Targeted Automated Regression Tests**:
+  - `AcademicWorkspace.test.jsx`: Added test verifying bulk marking and full roster submission preservation while search filtering is active.
+  - `MarksManagement.test.jsx`: Added test verifying full roster preservation and unsaved-change indicator activation while search filtering is active.
+
+### 2. Security & Access Control Review
+- **Role-Based Endpoint Protection**: Verified that `@Access` interceptor (`CorsConfig.java`) restricts all state-changing and role-scoped endpoints:
+  - Students cannot create course offerings, schedule lectures, mark attendance, or enter marks (HTTP 403 Forbidden).
+  - Students can only view their own grades (`/api/academic/my-marks`) and own complaints (`/api/academic/complaints/my`).
+  - Teachers cannot view or modify course offerings, lecture rosters, or assessments outside their assigned sections.
+  - Anonymous requests without active sessions are rejected with HTTP 401 Unauthorized.
+- **CSRF Defense**: Double-layered protection through `SameSite=Strict` HTTP-only session cookies and mandatory `X-Campus-Request: 1` header enforcement on all mutating HTTP methods (POST, PUT, DELETE, PATCH).
+- **SQL Injection Prevention**: All SQL statements across controllers and services use parameterized queries via Spring `JdbcTemplate` with strict type binding.
+- **Password Security**: Passwords hashed using standard PBKDF2 with unique salts; plaintext passwords are never persisted or logged.
+
+### 3. Production Readiness & Configuration Audit
+- **Environment & Secret Hygiene**:
+  - `application.properties`: Uses environment variables `${CAMPUS_DB_USER}` and `${CAMPUS_DB_PASSWORD}`; no hardcoded production database credentials.
+  - `logging.level.com.campusharmony=INFO`: No sensitive credential or SQL payload logging.
+  - `spring.jpa.hibernate.ddl-auto=none`: Database schema managed solely through versioned migrations (`001` through `010`).
+- **Dashboard Integrity**: Production-facing dashboard statistics for Admin, Teacher, and Student roles originate exclusively from authentic server-side endpoints (`/academic/catalog`, `/academic/admin/complaints/stats`, `/academic/admin/marks-reports`, `/academic/my-marks`, `/timetable/today`).
+- **Git Cleanliness**: Comprehensive `.gitignore` ignores all build artifacts (`target/`, `.output/`, `node_modules/`), local temporary files, and IDE configurations.
+
+### 4. University Evaluation Readiness Matrix
+
+#### Track 1: Front End Engineering-II (FEE-II)
+| Syllabus Concept | Repository Implementation | Verified Status |
+| --- | --- | --- |
+| **Component Architecture & JSX** | Modular components (`AcademicWorkspace.jsx`, `DashboardOverview.jsx`, `DataTable.jsx`, `MetricCard.jsx`, `StatusBadge.jsx`) | **VERIFIED** |
+| **React Hooks** | `useState`, `useEffect`, `useMemo`, `useRef`, custom hooks (`useRows`, `useSafeSearch`, `useAuth`) | **VERIFIED** |
+| **Context API & Auth State** | `AuthContext.jsx` provides global reactive identity, role-based rendering, and automatic session expiration handling | **VERIFIED** |
+| **Type-Safe Routing** | TanStack Router (`createFileRoute`, `validateSearch`, `useNavigate`, query parameter synchronization) | **VERIFIED** |
+| **Responsive UI & Themes** | Tailwind CSS with responsive breakpoints (`sm:`, `md:`, `lg:`), CSS custom properties, and full light/dark theme support | **VERIFIED** |
+| **Controlled Forms & Validation** | Dynamic select dropdowns, max-marks numeric validations, unsaved change warnings, and accessible modal dialogs | **VERIFIED** |
+| **REST Client Integration** | Centralized API client (`api.js`) with HTTP-only credentials, custom headers, and normalized error responses | **VERIFIED** |
+| **Automated Frontend Testing** | 12 Vitest test suites, 37 test cases covering components, authentication, routing, and workflows | **VERIFIED** |
+
+#### Track 2: Database Management System (DBMS)
+| Syllabus Concept | Repository Implementation | Verified Status |
+| --- | --- | --- |
+| **Relational Modeling & 3NF** | Normalized relational schema across 10 versioned SQL migrations (`001` to `010`) | **VERIFIED** |
+| **Integrity Constraints** | Foreign keys with `ON DELETE CASCADE`/`RESTRICT`, `CHECK` constraints, composite `UNIQUE` keys | **VERIFIED** |
+| **Advanced Joins & Aggregations** | Complex multi-table inner and outer joins across offerings, enrollments, sessions, and records | **VERIFIED** |
+| **Database Views** | `v_course_assessment_performance`, `v_attendance_defaulters`, `v_grievance_status_tracking` | **VERIFIED** |
+| **Stored Procedures** | `sp_calculate_attendance_defaulters`, `sp_generate_academic_transcript`, etc. | **VERIFIED** |
+| **Stored Functions** | `fn_calculate_grade(marks_obtained, max_marks)` returning letter grades `A+` through `F` | **VERIFIED** |
+| **Database Triggers** | `trg_assessment_marks_grade_ins` and `trg_assessment_marks_grade_upd` for automatic grade synchronization | **VERIFIED** |
+| **ACID Transactions & Locking** | `@Transactional` isolation with pessimistic row-level locking (`FOR UPDATE`) on lecture conduction, attendance, and marks | **VERIFIED** |
+
+#### Track 3: Programming in Java
+| Syllabus Concept | Repository Implementation | Verified Status |
+| --- | --- | --- |
+| **Object-Oriented Design** | Clean layering: Controllers, Services, Repositories, DTO Records, Security Interceptors | **VERIFIED** |
+| **Modern Java Records** | Immutable DTOs (`Submission`, `MarkEntry`, `AssessmentCreateRequest`, `TimetableSlotRequest`, `Identity`) | **VERIFIED** |
+| **Java Collections Framework** | `List`, `Map`, `Set`, `HashMap`, `HashSet`, `ArrayList` for payload validation and aggregation | **VERIFIED** |
+| **Spring JDBC & JPA** | Parameterized queries via `JdbcTemplate` avoiding SQL injection; Spring Data repository abstraction | **VERIFIED** |
+| **Exception Handling** | Declarative `ResponseStatusException` with standard HTTP error statuses (400, 401, 403, 404, 409) | **VERIFIED** |
+| **Stream API & Functional Java** | Java 17 Stream filtering, mapping, and collectors for data transformation and validation | **VERIFIED** |
+| **Session Security & Concurrency** | Thread-safe HTTP session management, PBKDF2 password hashing, transactional concurrency control | **VERIFIED** |
+| **Automated Backend Testing** | JUnit 5 test classes (`FoundationAccessTests`, `MarksAccessTests`, `TimetableAccessTests`, etc.) | **VERIFIED** |
+
+### 5. Final Regression Testing Results
+
+| Verification Suite | Scope | Command | Result |
+| --- | --- | --- | --- |
+| **Frontend Unit & Route Tests** | 12 test files, 37 unit/workflow tests | `npm.cmd --prefix frontend test -- --run` | **12 passed, 37 passed (100%)** |
+| **Frontend Production Build** | Vite production bundle + Nitro SSR packaging | `npm.cmd --prefix frontend run build` | **BUILD SUCCESS (0 errors)** |
+| **Backend Role Access Tests** | 5 test classes (`FoundationAccessTests`, `MarksAccessTests`, `TimetableAccessTests`, `AnalyticsAccessTests`, `ComplaintAccessTests`) | `mvn.cmd -f backend/pom.xml test` | **7 passed, 0 failures (`BUILD SUCCESS`)** |
+| **Backend Integration Suites** | 5 workflow suites (`FoundationWorkflowIT`, `MarksWorkflowIT`, `TimetableWorkflowIT`, `AnalyticsWorkflowIT`, `ComplaintWorkflowIT`) | `.\backend\verify-foundation.ps1` | **5 passed, 0 failures (`BUILD SUCCESS`)** (Verified baseline) |
+| **Live Multi-Role Browser Lab** | Chrome/Webview browser automation | Teacher, Student, Admin interactive workflows across 4 viewports | **100% verified** |
+
+
 
 

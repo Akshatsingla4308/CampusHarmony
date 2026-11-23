@@ -190,30 +190,40 @@ public class AcademicMarksController {
 
             // Check if existing mark exists
             var existingMarks = db.queryForList(
-                "SELECT id, marks_obtained FROM assessment_marks WHERE assessment_id = ? AND student_id = ? FOR UPDATE",
+                "SELECT id, marks_obtained, remarks FROM assessment_marks WHERE assessment_id = ? AND student_id = ? FOR UPDATE",
                 assessmentId, studentId
             );
 
             if (!existingMarks.isEmpty()) {
-                // UPDATE existing mark
+                // UPDATE existing mark only if score or remarks changed
                 long markId = ((Number) existingMarks.get(0).get("id")).longValue();
                 BigDecimal oldScore = (BigDecimal) existingMarks.get(0).get("marks_obtained");
+                var oldRemarksObj = existingMarks.get(0).get("remarks");
+                String oldRemarks = oldRemarksObj != null ? oldRemarksObj.toString() : "";
+                String newRemarks = entry.remarks() != null ? entry.remarks() : "";
 
-                db.update("""
-                    UPDATE assessment_marks 
-                    SET marks_obtained = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = ?
-                    """,
-                    entry.marksObtained(), entry.remarks(), markId
-                );
+                boolean scoreChanged = oldScore == null || oldScore.compareTo(entry.marksObtained()) != 0;
+                boolean remarksChanged = !oldRemarks.equals(newRemarks);
 
-                db.update("""
-                    INSERT INTO assessment_marks_audit(mark_id, assessment_id, student_id, old_marks, new_marks, changed_by, action_type, reason)
-                    VALUES(?, ?, ?, ?, ?, ?, 'UPDATE', ?)
-                    """,
-                    markId, assessmentId, studentId, oldScore, entry.marksObtained(), user.login(), batch.reason()
-                );
-                updatedCount++;
+                if (scoreChanged || remarksChanged) {
+                    db.update("""
+                        UPDATE assessment_marks 
+                        SET marks_obtained = ?, remarks = ?, updated_at = CURRENT_TIMESTAMP
+                        WHERE id = ?
+                        """,
+                        entry.marksObtained(), entry.remarks(), markId
+                    );
+
+                    if (scoreChanged) {
+                        db.update("""
+                            INSERT INTO assessment_marks_audit(mark_id, assessment_id, student_id, old_marks, new_marks, changed_by, action_type, reason)
+                            VALUES(?, ?, ?, ?, ?, ?, 'UPDATE', ?)
+                            """,
+                            markId, assessmentId, studentId, oldScore, entry.marksObtained(), user.login(), batch.reason()
+                        );
+                    }
+                    updatedCount++;
+                }
             } else {
                 // INSERT new mark
                 db.update("""

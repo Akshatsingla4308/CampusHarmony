@@ -108,4 +108,67 @@ describe("Marks & Evaluations Management Page", () => {
     expect(screen.getByText("88.0%")).toBeInTheDocument();
     expect(screen.getByText("Excellent performance")).toBeInTheDocument();
   });
+
+  it("preserves full roster and detects unsaved changes during search filtering", async () => {
+    useAuth.mockReturnValue({ role: "teacher" });
+    request.mockResolvedValue([
+      { id: 10, section_id: 1, section_name: "CSE-A", course_name: "Databases", code: "CS501" },
+    ]);
+
+    api.marks.getOfferingAssessments.mockResolvedValue([
+      { id: 101, title: "CA-1", assessment_type: "CA-1", max_marks: 50, assessment_date: "2026-11-22" },
+    ]);
+
+    api.marks.getAssessmentRoster.mockResolvedValue({
+      assessment: { id: 101, title: "CA-1", max_marks: 50 },
+      roster: [
+        { enrollment_id: 501, student_id: 1, roll: "24CSE1001", name: "Aarav Patel", marks_obtained: 40, remarks: "Evaluated", is_saved: true },
+        { enrollment_id: 502, student_id: 2, roll: "24CSE1002", name: "Bhavna Sharma", marks_obtained: 45, remarks: "Evaluated", is_saved: true },
+        { enrollment_id: 503, student_id: 3, roll: "24CSE1003", name: "Chirag Singh", marks_obtained: null, remarks: "", is_saved: false },
+      ],
+    });
+
+    api.marks.getAssessmentStats.mockResolvedValue({
+      summary: { submitted_count: 2, avg_marks: 42.5, avg_percentage: 85.0 },
+      grades: [],
+    });
+
+    api.marks.saveAssessmentMarks.mockResolvedValue({ inserted: 0, updated: 1 });
+
+    render(<MarksManagementPage />);
+    expect(await screen.findByText(/CA-1 — Grading Roster/)).toBeInTheDocument();
+
+    // Roster count chip shows Enrolled: 3, Evaluated: 2
+    expect(screen.getByText("Enrolled: 3")).toBeInTheDocument();
+    expect(screen.getByText("Evaluated: 2")).toBeInTheDocument();
+
+    // Search filter input is rendered because roster.length > 2
+    const searchInput = screen.getByPlaceholderText("Search roster…");
+    fireEvent.change(searchInput, { target: { value: "Aarav" } });
+
+    // Aarav is visible, Bhavna is filtered out of view
+    expect(screen.getByText("24CSE1001")).toBeInTheDocument();
+    expect(screen.queryByText("24CSE1002")).not.toBeInTheDocument();
+
+    // Update Aarav's mark to 48
+    const markInput = screen.getByPlaceholderText("Enter mark");
+    fireEvent.change(markInput, { target: { value: "48" } });
+
+    // Unsaved changes badge is visible
+    expect(screen.getByText(/Unsaved changes/)).toBeInTheDocument();
+
+    // Save marks
+    const saveButtons = screen.getAllByRole("button", { name: /Save Marks/ });
+    fireEvent.click(saveButtons[0]);
+
+    await waitFor(() => {
+      expect(api.marks.saveAssessmentMarks).toHaveBeenCalledWith("101", {
+        records: [
+          { enrollmentId: 501, marksObtained: 48, remarks: "Evaluated" },
+          { enrollmentId: 502, marksObtained: 45, remarks: "Evaluated" },
+        ],
+        reason: "Evaluation submission",
+      });
+    });
+  });
 });

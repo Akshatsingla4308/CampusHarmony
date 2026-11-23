@@ -94,3 +94,53 @@ it("opens the requested lecture and saves corrections with unchanged roster entr
     },
   });
 });
+
+it("allows bulk marking and preserves full roster when search filter is active", async () => {
+  useAuth.mockReturnValue({ role: "teacher" });
+  request.mockImplementation(async (path, options) => {
+    if (path.endsWith("/offerings"))
+      return [{ id: 42, section_id: 7, section_name: "A", code: "DB", course_name: "Databases" }];
+    if (path.includes("/lectures?offeringId=42"))
+      return [{ id: 300, session_slot: 2 }];
+    if (path.endsWith("/300/roster"))
+      return [
+        { enrollment_id: 917, student_id: 5, name: "Aarav Patel", roll: "TEST-5" },
+        { enrollment_id: 918, student_id: 6, name: "Bhavna Sharma", roll: "TEST-6" },
+        { enrollment_id: 919, student_id: 7, name: "Chirag Singh", roll: "TEST-7" },
+        { enrollment_id: 920, student_id: 8, name: "Divya Verma", roll: "TEST-8" },
+      ];
+    if (options?.method === "POST") return null;
+    throw new Error("Unexpected request " + path);
+  });
+
+  render(<AcademicWorkspace selection={{ offeringId: 42, sessionId: 300, date: "2026-01-01" }} />);
+  await screen.findByText(/TEST-5/);
+
+  // Click "Mark All Present"
+  fireEvent.click(screen.getByRole("button", { name: "Mark All Present" }));
+  expect(screen.getByText("Present: 4")).toBeInTheDocument();
+
+  // Search filter
+  const searchInput = screen.getByPlaceholderText("Search by name or roll…");
+  fireEvent.change(searchInput, { target: { value: "Aarav" } });
+
+  // Aarav is visible, Bhavna is filtered out of view
+  expect(screen.getByText(/Aarav Patel/)).toBeInTheDocument();
+  expect(screen.queryByText(/Bhavna Sharma/)).not.toBeInTheDocument();
+
+  // Submit attendance submits all 4 students even with search filter active
+  fireEvent.click(screen.getByText("Submit attendance"));
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith("/academic/lectures/300/attendance", {
+      method: "POST",
+      body: {
+        records: [
+          { enrollmentId: 917, status: "Present" },
+          { enrollmentId: 918, status: "Present" },
+          { enrollmentId: 919, status: "Present" },
+          { enrollmentId: 920, status: "Present" },
+        ],
+      },
+    }),
+  );
+});
