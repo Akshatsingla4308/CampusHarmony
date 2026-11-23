@@ -29,5 +29,4 @@ public interface TeacherService {
 
     Student registerStudent(RegisterStudentRequest request);
 
-    Map<String, Object> authenticate(LoginRequest request);
 }

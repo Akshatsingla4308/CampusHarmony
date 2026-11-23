@@ -11,7 +11,7 @@ export const Route = createFileRoute("/transcript")({
 
 function TranscriptPage() {
   const [students, setStudents] = useState([]);
-  const [selectedStudentId, setSelectedStudentId] = useState(1);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
   const [studentDetails, setStudentDetails] = useState(null);
   const [transcriptRecords, setTranscriptRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -24,7 +24,7 @@ function TranscriptPage() {
         if (Array.isArray(res) && res.length > 0) {
           setStudents(res);
           setSelectedStudentId(res[0].id);
-        }
+        } else {setLoading(false);}
       } catch (err) {
         setError(err);
       }
@@ -46,17 +46,9 @@ function TranscriptPage() {
         setStudentDetails(stu);
         setTranscriptRecords(Array.isArray(tRes) ? tRes : []);
       } catch (err) {
-        // Fallback to sample calculated transcript for demo student if empty
-        setError(null);
-        if (studentDetails) {
-          setTranscriptRecords([
-            { subjectKey: "CS501", name: "Database Management Systems", examType: "Endterm", marksObtained: 88, maxMarks: 100, grade: "A+" },
-            { subjectKey: "CS502", name: "Programming in Java", examType: "Endterm", marksObtained: 92, maxMarks: 100, grade: "A+" },
-            { subjectKey: "CS503", name: "Front End Engineering-II", examType: "Endterm", marksObtained: 85, maxMarks: 100, grade: "A" },
-            { subjectKey: "MA501", name: "Advanced Calculus & Linear Algebra", examType: "Endterm", marksObtained: 78, maxMarks: 100, grade: "B" },
-            { subjectKey: "CS504", name: "Computer Architecture", examType: "Endterm", marksObtained: 81, maxMarks: 100, grade: "A" },
-          ]);
-        }
+        setStudentDetails(null);
+        setTranscriptRecords([]);
+        setError(err);
       } finally {
         setLoading(false);
       }
@@ -113,9 +105,9 @@ function TranscriptPage() {
 
       {error && <ErrorMessage error={error} />}
 
-      {loading ? (
+      {error ? null : loading ? (
         <LoadingState message="Fetching official academic records from MySQL database..." />
-      ) : (
+      ) : !studentDetails ? <p>No student record available.</p> : (
         <div className="bg-card text-card-foreground rounded-2xl border border-border p-6 md:p-8 shadow-xs space-y-6">
           {/* Institutional Header */}
           <div className="border-b border-border pb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -146,15 +138,15 @@ function TranscriptPage() {
             </div>
             <div>
               <span className="text-muted-foreground font-medium">University Roll:</span>
-              <p className="font-bold font-mono text-foreground text-sm mt-0.5">{studentDetails?.roll || "CS-2101"}</p>
+              <p className="font-bold font-mono text-foreground text-sm mt-0.5">{studentDetails.roll}</p>
             </div>
             <div>
               <span className="text-muted-foreground font-medium">Department:</span>
-              <p className="font-bold text-foreground text-sm mt-0.5">{studentDetails?.department || "Computer Science"}</p>
+              <p className="font-bold text-foreground text-sm mt-0.5">{studentDetails.department}</p>
             </div>
             <div>
               <span className="text-muted-foreground font-medium">Academic Period:</span>
-              <p className="font-bold text-foreground text-sm mt-0.5">Semester {studentDetails?.semester || 5} (Odd 2026)</p>
+              <p className="font-bold text-foreground text-sm mt-0.5">Semester {studentDetails.semester}</p>
             </div>
           </div>
 
@@ -179,7 +171,7 @@ function TranscriptPage() {
                     const grade = r.grade || calculateGrade(pct);
                     return (
                       <tr key={idx} className="hover:bg-muted/20">
-                        <td className="px-4 py-3 font-mono font-bold text-foreground">{r.subjectKey || "CS501"}</td>
+                        <td className="px-4 py-3 font-mono font-bold text-foreground">{r.subjectKey || "—"}</td>
                         <td className="px-4 py-3 font-medium text-foreground">{r.name || r.subjectKey || "Course Title"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{r.examType || "Endterm"}</td>
                         <td className="px-4 py-3 text-center font-mono font-bold text-foreground">{r.marksObtained}</td>
@@ -219,7 +211,7 @@ function TranscriptPage() {
             <div className="p-4 rounded-xl border border-border bg-card">
               <span className="text-xs text-muted-foreground font-medium">Final Degree Grade</span>
               <div className="text-xl font-extrabold mt-1 text-emerald-600 dark:text-emerald-400 font-mono">
-                {overallGrade} (Passed with Distinction)
+                {transcriptRecords.length ? overallGrade : "No grades recorded"}
               </div>
             </div>
           </div>

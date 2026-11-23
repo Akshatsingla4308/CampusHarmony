@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useEffect } from "react";
 import { Plus, Edit2, Trash2, Layers, UserCheck, CheckCircle2 } from "lucide-react";
-import { api } from "../lib/api";
+import { api, request } from "../lib/api";
 import DataTable from "../components/common/DataTable";
 import StatusBadge from "../components/common/StatusBadge";
 import LoadingState from "../components/common/LoadingState";
@@ -16,7 +16,7 @@ function CoursesPage() {
   const [courses, setCourses] = useState([]);
   const [departments, setDepartments] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [enrollmentRoster, setEnrollmentRoster] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
@@ -29,8 +29,8 @@ function CoursesPage() {
     name: "",
     department: "Computer Science",
     departmentId: 1,
-    faculty: "Dr. Sudha Rao",
-    teacherId: 1,
+    faculty: "",
+    teacherId: "",
     credits: 4,
     semester: 5,
     subjectKey: "computerScience",
@@ -44,13 +44,17 @@ function CoursesPage() {
         api.courses.getAll(),
         api.departments.getAll(),
         api.teachers.getAll(),
-        api.students.getAll(),
+        request("/dbms/views/enrollment-roster"),
       ]);
 
       setCourses(Array.isArray(crsRes) ? crsRes : []);
       setDepartments(Array.isArray(deptRes) ? deptRes : []);
       setTeachers(Array.isArray(tchRes) ? tchRes : []);
-      setStudents(Array.isArray(stuRes) ? stuRes : []);
+      setEnrollmentRoster(stuRes.map(row => ({
+        id: row.enrollment_id, roll: row.student_roll, studentName: row.student_name,
+        department: row.student_department, courseCode: row.course_code, courseName: row.course_name,
+        academicPeriod: row.period_name, status: row.enrollment_status,
+      })));
     } catch (err) {
       setError(err);
     } finally {
@@ -62,21 +66,7 @@ function CoursesPage() {
     loadData();
   }, []);
 
-  const openAddCourseModal = () => {
-    setEditingCourse(null);
-    setCourseForm({
-      code: `CS${500 + courses.length + 1}`,
-      name: "",
-      department: departments[0]?.name || "Computer Science",
-      departmentId: departments[0]?.id || 1,
-      faculty: teachers[0]?.name || "Dr. Sudha Rao",
-      teacherId: teachers[0]?.id || 1,
-      credits: 4,
-      semester: 5,
-      subjectKey: "computerScience",
-    });
-    setIsCourseModalOpen(true);
-  };
+  const openAddCourseModal = () => window.location.assign("/#offerings");
 
   const handleCourseSubmit = async (e) => {
     e.preventDefault();
@@ -109,32 +99,6 @@ function CoursesPage() {
       setError(err);
     }
   };
-
-  // Mock student course enrollment roster view based on enrolled students
-  const enrollmentRoster = students.flatMap((s) => [
-    {
-      id: `${s.id}-1`,
-      studentId: s.id,
-      roll: s.roll,
-      studentName: s.name,
-      department: s.department,
-      courseCode: s.department === "Computer Science" ? "CS501" : "MA501",
-      courseName: s.department === "Computer Science" ? "Database Management Systems" : "Advanced Calculus",
-      academicPeriod: "Odd 2026 (Sem 5)",
-      status: s.status === "Active" ? "Enrolled" : "Probation",
-    },
-    {
-      id: `${s.id}-2`,
-      studentId: s.id,
-      roll: s.roll,
-      studentName: s.name,
-      department: s.department,
-      courseCode: s.department === "Computer Science" ? "CS502" : "PH501",
-      courseName: s.department === "Computer Science" ? "Programming in Java" : "Quantum Mechanics",
-      academicPeriod: "Odd 2026 (Sem 5)",
-      status: "Enrolled",
-    },
-  ]);
 
   const courseColumns = [
     {
@@ -392,7 +356,7 @@ function CoursesPage() {
                       setCourseForm({
                         ...courseForm,
                         teacherId: tId,
-                        faculty: t ? t.name : "Dr. Sudha Rao",
+                        faculty: t ? t.name : "",
                       });
                     }}
                     className="mt-1 w-full px-3 py-1.5 text-xs rounded-lg border border-input bg-background"

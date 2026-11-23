@@ -24,6 +24,11 @@ public class AttendanceSession {
     @Column(name = "teacher_id", length = 30)
     private String teacherId;
 
+    @Column(name = "offering_id", insertable = false, updatable = false)
+    private Long offeringId;
+
+    public Long getOfferingId() { return offeringId; }
+
     @Column(name = "session_date", nullable = false)
     private LocalDate sessionDate;
 

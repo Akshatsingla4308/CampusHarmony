@@ -211,10 +211,7 @@ public class StudentServiceImpl implements StudentService {
     @Transactional(readOnly = true)
     public List<String> getDepartments() {
         List<Department> list = departmentRepository.findAll();
-        if (!list.isEmpty()) {
-            return list.stream().map(Department::getName).collect(Collectors.toList());
-        }
-        return Arrays.asList("Computer Science", "Information Technology", "Electronics", "Mechanical", "Civil");
+        return list.stream().map(Department::getName).collect(Collectors.toList());
     }
 
     private String generateRollNumber(String department, Integer semester) {

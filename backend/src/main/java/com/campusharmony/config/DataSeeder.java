@@ -21,6 +21,7 @@ import javax.sql.DataSource;
  * the subjects/teachers tables were empty and the user had to run database/data.sql by hand.
  * It only runs when the teachers table is empty, so it never overwrites real data.
  */
+@org.springframework.context.annotation.Profile("demo-fixtures")
 @Component
 public class DataSeeder implements CommandLineRunner {
 
@@ -67,3 +68,4 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 }
+

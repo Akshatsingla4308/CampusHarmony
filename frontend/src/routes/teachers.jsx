@@ -47,18 +47,7 @@ function TeachersPage() {
     loadData();
   }, []);
 
-  const openAddModal = () => {
-    setEditingTeacher(null);
-    setFormData({
-      name: "",
-      departmentId: departments[0]?.id || 1,
-      subject: "computerScience",
-      email: "",
-      phone: "9876543200",
-      cabin: "CS-401",
-    });
-    setIsModalOpen(true);
-  };
+  const openAddModal = () => window.location.assign("/#teachers");
 
   const openEditModal = (teacher) => {
     setEditingTeacher(teacher);

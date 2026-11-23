@@ -44,7 +44,7 @@ Campus Harmony is a production-grade, local/offline University ERP system design
 - **JDK 21 LTS** installed and configured (`java -version`)
 - **Apache Maven 3.9+** (`mvn -version`)
 - **Node.js 20+** and **npm** (`node -v`, `npm -v`)
-- **MySQL Server 8.0+** running on `localhost:3306` with user `root`, password `root`
+- **MySQL Server 8.0+** running on `localhost:3306` with the v5 schema and migration 006. Configure the database credentials and first admin as described in [the foundation setup](docs/ACADEMIC_FOUNDATION.md)
 
 ### One-Click Launchers
 Campus Harmony includes automated Windows batch scripts in the project root:
@@ -71,7 +71,7 @@ npm --prefix frontend run dev
 ### A. Front End Engineering-II Evaluation (40 Marks) — React & Modern Web
 1. **Interactive Single-Page ERP:**
    - 16 production modules with responsive layouts and accessible controls.
-   - Persona switching: Toggle from **Faculty Portal** (Dr. Rajesh Kumar) to **Student Portal** (Rahul Sharma) in `Navbar.jsx` with instantaneous navigation filtering.
+   - Sign in with a provisioned admin, teacher or student account. The backend session determines access.
    - Reusable `DataTable.jsx`: Client-side search, multi-column sorting, and pagination.
    - Recharts visual analytics (attendance distribution, enrollment breakdown).
 2. **Preserved Evaluated Vanilla Portal:**
@@ -134,13 +134,13 @@ npm --prefix frontend run build
 
 | # | Route | Module Name | Primary Backend API Connected |
 |---|---|---|---|
-| 1 | `/` | Executive ERP Dashboard | `/api/dashboard/stats`, `/api/activities` |
+| 1 | `/` | Academic workspace by role | `/api/academic/**` |
 | 2 | `/students` | Student Directory & Admissions | `/api/students/**` (CRUD) |
 | 3 | `/teachers` | Faculty & Instructors | `/api/teachers/**` (CRUD) |
 | 4 | `/departments` | Academic Departments | `/api/departments/**` (CRUD) |
 | 5 | `/subjects` | Curriculum Subjects Catalog | `/api/subjects/**` (CRUD) |
 | 6 | `/courses` | Course Offerings & Enrollments | `/api/courses/**` |
-| 7 | `/attendance` | Lecture Attendance & Sessions | `/api/attendance/**`, `/api/attendance/sessions/**` |
+| 7 | `/attendance` | Lecture Attendance & Sessions | `/api/academic/lectures/**`, `/api/academic/my-attendance` |
 | 8 | `/marks` | Marks & Examination Tiers | `/api/marks/**`, `/api/marks/evaluations/**` |
 | 9 | `/transcript` | Official Academic Transcripts | `/api/marks/transcript/**` |
 | 10 | `/defaulters` | Defaulter Reports (Cursor Math) | `/api/dbms/defaulters?threshold=...` |
@@ -148,7 +148,7 @@ npm --prefix frontend run build
 | 12 | `/dbms-demo` | DBMS Stored Procedures & ACID | `/api/dbms/**` |
 | 13 | `/java-demo` | Core Java CHO Demonstrations | `/api/java-demo/**` |
 | 14 | `/vanilla-portal`| Preserved Legacy Vanilla Portal | Direct `/sms/index.html` iframe & link |
-| 15 | `/profile` | User Profile & Settings | Local persona switching & session controls |
+| 15 | `/profile` | User Profile & Settings | Authenticated profile and session controls |
 | 16 | `/sms/index.html`| Evaluated Vanilla FEE-II Portal | Direct vanilla JS DOM/LocalStorage portal |
 
 ---

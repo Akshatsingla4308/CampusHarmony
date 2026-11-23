@@ -1,61 +1,54 @@
 import React from "react";
-import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { api } from "../lib/api";
 import { AuthProvider, useAuth } from "../context/AuthContext";
-
-function TestConsumer() {
-  const { user, role, switchRole, logout } = useAuth();
+vi.mock("../lib/api", () => ({ api: { auth: { me: vi.fn(), login: vi.fn(), logout: vi.fn() } } }));
+function Consumer() {
+  const { user, loading, error, login, logout } = useAuth();
   return (
-    <div>
-      <span data-testid="user-name">{user?.name}</span>
-      <span data-testid="user-role">{role}</span>
-      <button onClick={() => switchRole("student")}>Switch to Student</button>
-      <button onClick={() => switchRole("teacher")}>Switch to Teacher</button>
+    <>
+      <span>{loading ? "Checking" : (user?.name ?? "Guest")}</span>
+      <span>{error}</span>
+      <button onClick={() => login("test", "fixture")}>Login</button>
       <button onClick={logout}>Logout</button>
-    </div>
+    </>
   );
 }
-
-describe("AuthContext", () => {
+function start() {
+  render(
+    <AuthProvider>
+      <Consumer />
+    </AuthProvider>,
+  );
+}
+describe("Server-backed sessions", () => {
   beforeEach(() => {
+    vi.resetAllMocks();
     localStorage.clear();
   });
-
-  it("provides default faculty demo session for instant evaluator access", () => {
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    expect(screen.getByTestId("user-name")).toHaveTextContent("Dr. Sudha Rao");
-    expect(screen.getByTestId("user-role")).toHaveTextContent("teacher");
+  it("ignores a stored demo identity", async () => {
+    localStorage.setItem("sms.session", JSON.stringify({ role: "teacher" }));
+    api.auth.me.mockRejectedValue({ status: 401 });
+    start();
+    expect(await screen.findByText("Guest")).toBeInTheDocument();
   });
-
-  it("switches personas between faculty and student seamlessly", () => {
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
-    fireEvent.click(screen.getByText("Switch to Student"));
-    expect(screen.getByTestId("user-name")).toHaveTextContent("Rahul Sharma");
-    expect(screen.getByTestId("user-role")).toHaveTextContent("student");
-
-    fireEvent.click(screen.getByText("Switch to Teacher"));
-    expect(screen.getByTestId("user-name")).toHaveTextContent("Dr. Sudha Rao");
-    expect(screen.getByTestId("user-role")).toHaveTextContent("teacher");
+  it("keeps a rejected login signed out", async () => {
+    api.auth.me.mockRejectedValue({ status: 401 });
+    api.auth.login.mockRejectedValue(new Error("Invalid credentials"));
+    start();
+    await screen.findByText("Guest");
+    fireEvent.click(screen.getByText("Login"));
+    await screen.findByText("Invalid credentials");
+    expect(screen.getByText("Guest")).toBeInTheDocument();
   });
-
-  it("handles logout properly and resets role to guest", () => {
-    render(
-      <AuthProvider>
-        <TestConsumer />
-      </AuthProvider>
-    );
-
+  it("restores a backend identity and logs out", async () => {
+    api.auth.me.mockResolvedValue({ name: "Verified user", role: "teacher" });
+    api.auth.logout.mockResolvedValue(null);
+    start();
+    await screen.findByText("Verified user");
     fireEvent.click(screen.getByText("Logout"));
-    expect(screen.getByTestId("user-role")).toHaveTextContent("guest");
+    await waitFor(() => expect(screen.getByText("Guest")).toBeInTheDocument());
+    expect(api.auth.logout).toHaveBeenCalledOnce();
   });
 });

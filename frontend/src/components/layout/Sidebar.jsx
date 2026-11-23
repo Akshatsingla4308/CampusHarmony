@@ -16,57 +16,109 @@ import {
   UserCheck,
   ExternalLink,
   Layers,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
-export function Sidebar() {
+export function Sidebar({ menuOpen, onNavigate }) {
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname;
   const { role } = useAuth();
 
-  const navigationGroups = [
-    {
-      title: "Academic Operations",
-      items: [
-        { name: "Dashboard", href: "/", icon: LayoutDashboard },
-        { name: "Students", href: "/students", icon: Users },
-        { name: "Faculty / Teachers", href: "/teachers", icon: GraduationCap },
-        { name: "Departments", href: "/departments", icon: Building2 },
-        { name: "Subjects Catalog", href: "/subjects", icon: BookOpen },
-        { name: "Courses & Enrollment", href: "/courses", icon: Layers },
-      ],
-    },
-    {
-      title: "Attendance & Evaluation",
-      items: [
-        { name: "Attendance Sessions", href: "/attendance", icon: CalendarCheck },
-        { name: "Marks & Evaluations", href: "/marks", icon: Award },
-        { name: "Academic Transcripts", href: "/transcript", icon: FileText },
-        { name: "Defaulter Reports", href: "/defaulters", icon: AlertTriangle },
-      ],
-    },
-    {
-      title: "Campus Life",
-      items: [{ name: "Activities & Mentorship", href: "/activities", icon: Activity }],
-    },
-    {
-      title: "Academic Demonstrations (Chitkara)",
-      items: [
-        { name: "DBMS Stored Procedures & ACID", href: "/dbms-demo", icon: Database },
-        { name: "Core Java CHO Demonstrations", href: "/java-demo", icon: Code2 },
-      ],
-    },
-    {
-      title: "Account",
-      items: [{ name: "Profile & Settings", href: "/profile", icon: UserCheck }],
-    },
-  ];
+  const getNavigationGroups = () => {
+    if (role === "teacher") {
+      return [
+        {
+          title: "Academic Teaching",
+          items: [
+            { name: "Dashboard", href: "/", icon: LayoutDashboard },
+            { name: "Timetable & Schedule", href: "/timetable", icon: Clock },
+            { name: "Class Attendance", href: "/attendance", icon: CalendarCheck },
+            { name: "Attendance Analytics", href: "/defaulters", icon: AlertTriangle },
+            { name: "Marks & Evaluations", href: "/marks", icon: Award },
+          ],
+        },
+        {
+          title: "Account",
+          items: [{ name: "Profile & Settings", href: "/profile", icon: UserCheck }],
+        },
+      ];
+    }
+    if (role === "student") {
+      return [
+        {
+          title: "Academic Records",
+          items: [
+            { name: "Dashboard", href: "/", icon: LayoutDashboard },
+            { name: "Class Timetable", href: "/timetable", icon: Clock },
+            { name: "My Attendance", href: "/attendance", icon: CalendarCheck },
+            { name: "Attendance Insights", href: "/defaulters", icon: AlertTriangle },
+            { name: "My Marks & Grades", href: "/marks", icon: Award },
+          ],
+        },
+        {
+          title: "Campus Support",
+          items: [{ name: "Complaints & Grievances", href: "/complaints", icon: FileText }],
+        },
+        {
+          title: "Account",
+          items: [{ name: "Profile & Settings", href: "/profile", icon: UserCheck }],
+        },
+      ];
+    }
+    return [
+      {
+        title: "Academic Operations",
+        items: [
+          { name: "Dashboard", href: "/", icon: LayoutDashboard },
+          { name: "Students", href: "/students", icon: Users },
+          { name: "Faculty / Teachers", href: "/teachers", icon: GraduationCap },
+          { name: "Departments", href: "/departments", icon: Building2 },
+          { name: "Subjects Catalog", href: "/subjects", icon: BookOpen },
+          { name: "Courses & Enrollment", href: "/courses", icon: Layers },
+        ],
+      },
+      {
+        title: "Attendance & Evaluation",
+        items: [
+          { name: "Weekly Timetable", href: "/timetable", icon: Clock },
+          { name: "Attendance Sessions", href: "/attendance", icon: CalendarCheck },
+          { name: "Attendance Analytics & Defaulters", href: "/defaulters", icon: AlertTriangle },
+          { name: "Marks & Evaluations", href: "/marks", icon: Award },
+          { name: "Academic Transcripts", href: "/transcript", icon: FileText },
+        ],
+      },
+      {
+        title: "Campus Life & Grievances",
+        items: [
+          { name: "Activities & Mentorship", href: "/activities", icon: Activity },
+          { name: "Grievance Management", href: "/complaints", icon: FileText },
+        ],
+      },
+      {
+        title: "Academic Demonstrations (Chitkara)",
+        items: [
+          { name: "DBMS Stored Procedures & ACID", href: "/dbms-demo", icon: Database },
+          { name: "Core Java CHO Demonstrations", href: "/java-demo", icon: Code2 },
+        ],
+      },
+      {
+        title: "Account",
+        items: [{ name: "Profile & Settings", href: "/profile", icon: UserCheck }],
+      },
+    ];
+  };
+
+  const navigationGroups = getNavigationGroups();
 
   return (
-    <aside className="w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col shrink-0 min-h-screen">
+    <aside
+      id="portal-navigation"
+      className={`${menuOpen ? "flex" : "hidden"} max-lg:fixed max-lg:inset-x-0 max-lg:top-16 max-lg:z-40 max-lg:max-h-[calc(100dvh-4rem)] max-lg:shadow-lg lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex-col shrink-0`}
+    >
       {/* Brand Header */}
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2.5">
+        <Link to="/" onClick={onNavigate} className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-sm">
             CH
           </div>
@@ -82,7 +134,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation Sections */}
-      <nav className="flex-1 p-3 space-y-6 overflow-y-auto">
+      <nav aria-label="Portal navigation" className="flex-1 p-3 space-y-6 overflow-y-auto">
         {navigationGroups.map((group) => (
           <div key={group.title}>
             <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -96,6 +148,8 @@ export function Sidebar() {
                   <Link
                     key={item.name}
                     to={item.href}
+                    onClick={onNavigate}
+                    aria-current={isActive ? "page" : undefined}
                     className={`flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                       isActive
                         ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-xs font-semibold"

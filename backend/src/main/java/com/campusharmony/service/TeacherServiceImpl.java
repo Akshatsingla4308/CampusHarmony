@@ -114,54 +114,6 @@ public class TeacherServiceImpl implements TeacherService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public Map<String, Object> authenticate(LoginRequest request) {
-        String role = request.getRole().trim().toLowerCase();
-        String name = request.getName().trim();
-        String roll = request.getRoll().trim().toUpperCase();
-
-        Map<String, Object> session = new HashMap<>();
-
-        if ("teacher".equals(role)) {
-            Teacher teacher = teacherRepository.findByIdIgnoreCase(roll)
-                    .orElseThrow(() -> new BadRequestException("Teacher ID not found. New teacher? Use \"Register here\" below."));
-
-            if (!normalizeName(teacher.getName()).equals(normalizeName(name))) {
-                throw new BadRequestException("Name does not match this teacher ID.");
-            }
-
-            session.put("role", "teacher");
-            session.put("name", teacher.getName());
-            session.put("roll", teacher.getId());
-            session.put("subject", teacher.getSubject());
-            session.put("workspace", teacher.getWorkspace());
-            session.put("loggedInAt", new Date().toInstant().toString());
-            return session;
-
-        } else if ("student".equals(role)) {
-            Student s = studentRepository.findByRollIgnoreCase(roll)
-                    .orElseThrow(() -> new BadRequestException("Roll number not found. New student? Use \"Register here\" below."));
-
-            if (!normalizeName(s.getName()).equals(normalizeName(name))) {
-                throw new BadRequestException("Name does not match this roll number.");
-            }
-            session.put("id", s.getId());
-            session.put("department", s.getDepartment());
-            session.put("semester", s.getSemester());
-
-            session.put("role", "student");
-            session.put("name", s.getName());
-            session.put("roll", s.getRoll());
-            session.put("workspace", "demo");
-            session.put("loggedInAt", new Date().toInstant().toString());
-            return session;
-
-        } else {
-            throw new BadRequestException("Invalid role specified. Must be 'teacher' or 'student'.");
-        }
-    }
-
-    @Override
     public Teacher createTeacher(Teacher teacher) {
         if (teacher.getId() == null || teacher.getId().isBlank()) {
             teacher.setId("T-" + (teacherRepository.count() + 1001));

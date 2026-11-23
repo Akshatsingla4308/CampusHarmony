@@ -54,6 +54,10 @@ public class AttendanceSessionServiceImpl implements AttendanceSessionService {
         AttendanceSession session = sessionRepository.findById(request.getSessionId())
                 .orElseThrow(() -> new ResourceNotFoundException("AttendanceSession", "id", request.getSessionId()));
 
+        if (session.getOfferingId() != null) {
+            throw new BadRequestException("Use the assigned teacher lecture roster for this offering.");
+        }
+
         List<AttendanceRecord> savedRecords = new ArrayList<>();
 
         for (SessionRecordEntry entry : request.getEntries()) {

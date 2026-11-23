@@ -339,7 +339,7 @@ function DbmsDemoPage() {
             <div className="p-3 rounded-xl border border-border bg-muted/20">
               <span className="font-mono font-bold text-foreground">fn_calculate_grade(p_marks_obtained, p_max_marks)</span>
               <p className="text-muted-foreground text-[11px] mt-1">
-                Computes standard university letter grades: A+ (>=90%), A (>=80%), B (>=70%), C (>=60%), D (>=50%), F (&lt;50%).
+                Grade thresholds are A+ (≥90%), A (≥80%), B (≥70%), C (≥60%), D (≥50%) and F (&lt;50%).
                 Includes bounds checking for negative numbers and zero division.
               </p>
             </div>

@@ -31,12 +31,6 @@ public class TeacherController {
         return ResponseEntity.ok(teacherService.getTeacherById(id));
     }
 
-    @PostMapping
-    public ResponseEntity<Teacher> createTeacher(@RequestBody Teacher teacher) {
-        Teacher created = teacherService.createTeacher(teacher);
-        return new ResponseEntity<>(created, HttpStatus.CREATED);
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<Teacher> updateTeacher(@PathVariable String id, @RequestBody Teacher teacher) {
         Teacher updated = teacherService.updateTeacher(id, teacher);

@@ -1,53 +1,39 @@
 package com.campusharmony.controller;
-
-import com.campusharmony.dto.LoginRequest;
-import com.campusharmony.dto.RegisterStudentRequest;
-import com.campusharmony.dto.RegisterTeacherRequest;
-import com.campusharmony.entity.Student;
-import com.campusharmony.entity.Teacher;
-import com.campusharmony.service.TeacherService;
+import com.campusharmony.security.*;
+import jakarta.servlet.http.*;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
+import org.springframework.boot.*;
+import org.springframework.core.env.Environment;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
-
-/**
- * AuthController - REST endpoints for Authentication and Registration.
- * Demonstrates: Spring Web REST Controller and Request Validation.
- */
+import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/auth")
-public class AuthController {
-
-    private final TeacherService teacherService;
-
-    public AuthController(TeacherService teacherService) {
-        this.teacherService = teacherService;
+public class AuthController implements ApplicationRunner {
+    private final JdbcTemplate db;
+    private final Environment env;
+    public AuthController(JdbcTemplate db,Environment env){this.db=db;this.env=env;}
+    public void run(ApplicationArguments args) {
+        String login=env.getProperty("CAMPUS_ADMIN_LOGIN"), password=env.getProperty("CAMPUS_ADMIN_PASSWORD");
+        if(login!=null && !login.isBlank() && db.queryForObject("SELECT COUNT(*) FROM accounts WHERE role='admin'",Integer.class)==0)
+            db.update("INSERT INTO accounts(login,display_name,role,password_hash) VALUES(?,?,'admin',?)",login,login,Passwords.hash(password));
     }
-
-    @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@Valid @RequestBody LoginRequest request) {
-        Map<String, Object> session = teacherService.authenticate(request);
-        return ResponseEntity.ok(session);
+    public record Credentials(@NotBlank @Size(max=80) String identifier,@NotBlank @Size(max=256) String password){}
+    @PostMapping("/login") @Access("public")
+    public Identity login(@Valid @RequestBody Credentials input,HttpServletRequest req) {
+        var users=db.query("SELECT * FROM accounts WHERE login=?", (rs,i)-> {
+            if(!Passwords.matches(input.password(),rs.getString("password_hash"))) return null;
+            return new Identity(rs.getString("login"),rs.getString("display_name"),rs.getString("role"),rs.getString("teacher_id"),rs.getObject("student_id",Long.class));
+        },input.identifier());
+        if(users.isEmpty() || users.get(0)==null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Invalid credentials");
+        if(req.getSession(false)!=null) req.getSession(false).invalidate();
+        req.getSession(true).setAttribute("user",users.get(0));
+        return users.get(0);
     }
-
-    @PostMapping("/register-teacher")
-    public ResponseEntity<Teacher> registerTeacher(@Valid @RequestBody RegisterTeacherRequest request) {
-        Teacher teacher = teacherService.registerTeacher(request);
-        return new ResponseEntity<>(teacher, HttpStatus.CREATED);
-    }
-
-    @PostMapping("/register-student")
-    public ResponseEntity<Student> registerStudent(@Valid @RequestBody RegisterStudentRequest request) {
-        Student student = teacherService.registerStudent(request);
-        return new ResponseEntity<>(student, HttpStatus.CREATED);
-    }
-
-    @GetMapping("/teachers")
-    public ResponseEntity<List<Teacher>> getAllTeachers() {
-        return ResponseEntity.ok(teacherService.getAllTeachers());
-    }
+    @GetMapping("/me") @Access({"admin","teacher","student"})
+    public Identity me(@SessionAttribute Identity user){return user;}
+    @PostMapping("/logout") @Access({"admin","teacher","student"})
+    public void logout(HttpSession session){session.invalidate();}
 }

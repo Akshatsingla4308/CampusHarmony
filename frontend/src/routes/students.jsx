@@ -51,21 +51,7 @@ function StudentsPage() {
     loadData();
   }, []);
 
-  const openAddModal = () => {
-    setEditingStudent(null);
-    setFormData({
-      roll: `CS-${2100 + students.length + 1}`,
-      name: "",
-      departmentId: departments[0]?.id || 1,
-      department: departments[0]?.name || "Computer Science",
-      semester: 5,
-      email: "",
-      phone: "9876543210",
-      gender: "Male",
-      status: "Active",
-    });
-    setIsModalOpen(true);
-  };
+  const openAddModal = () => window.location.assign("/#students");
 
   const openEditModal = (student) => {
     setEditingStudent(student);
