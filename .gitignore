@@ -10,6 +10,7 @@ Desktop.ini
 *.tmp
 *.bak
 *.swp
+*.zip
 
 # Logs
 *.log
@@ -43,6 +44,9 @@ frontend/.wrangler/
 .vinxi/
 frontend/.vinxi/
 *.local
+.env
+.env.*
+!.env.example
 
 # IDE & Editor Configuration
 .idea/

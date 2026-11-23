@@ -1,0 +1,19 @@
+# =============================================================================
+# Campus Harmony — Root Docker Ignore
+# =============================================================================
+
+.git/
+node_modules/
+frontend/node_modules/
+backend/target/
+dist/
+frontend/dist/
+.output/
+frontend/.output/
+.tanstack/
+frontend/.tanstack/
+.wrangler/
+frontend/.wrangler/
+*.log
+*.tmp
+.env
