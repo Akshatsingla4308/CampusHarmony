@@ -1,36 +1,42 @@
 ﻿# =============================================================================
-# Campus Harmony — Database Initialization Script
+# Campus Harmony — Safe Database Initialization & Inspection Script
 # =============================================================================
 # Fully compatible with Windows PowerShell 5.1 and PowerShell 7+
-# Checks if the database is already initialized; if not, safely applies
-# database/init_complete.sql (schema_v5 + procedures + migrations 006-010).
+# Strictly validates credentials, connection, and database state.
+# NEVER re-initializes or drops existing populated or partially initialized databases.
 # =============================================================================
 
-# Requires Windows PowerShell 5.1 or later
-# PowerShell version guard
+# Windows PowerShell 5.1+ compatibility check
 if ($PSVersionTable.PSVersion.Major -lt 5) {
-    Write-Error "[ERROR] Windows PowerShell 5.1 or higher is required."
+    [Console]::Error.WriteLine("[ERROR] Windows PowerShell 5.1 or higher is required.")
     exit 1
 }
 
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $initSql = Join-Path $repo "database\init_complete.sql"
 
-if (!(Test-Path $initSql)) {
-    Write-Error "[ERROR] Database initialization script not found at $initSql"
+if (!(Test-Path -LiteralPath $initSql)) {
+    [Console]::Error.WriteLine("[ERROR] Database initialization script not found at $initSql")
     exit 1
 }
 
-# Require credentials — no insecure defaults
+# 1. Require credentials — strictly no empty or placeholder passwords
 $pass = $env:CAMPUS_DB_PASSWORD
 if ([string]::IsNullOrWhiteSpace($pass)) {
-    Write-Error "[SECURITY ERROR] CAMPUS_DB_PASSWORD environment variable is not set!`nPlease define your secure MySQL password in your .env file before launching."
+    [Console]::Error.WriteLine("[SECURITY ERROR] CAMPUS_DB_PASSWORD environment variable is not set!")
+    [Console]::Error.WriteLine("Please define your secure MySQL password in your .env file before launching.")
+    exit 1
+}
+
+if ($pass -eq 'your_secure_mysql_password_here') {
+    [Console]::Error.WriteLine("[SECURITY ERROR] CAMPUS_DB_PASSWORD is still set to the placeholder text!")
+    [Console]::Error.WriteLine("Please edit .env and configure your actual MySQL password.")
     exit 1
 }
 
 $user = if ($env:CAMPUS_DB_USER) { $env:CAMPUS_DB_USER } else { 'root' }
 
-# Find mysql.exe (compatible with PowerShell 5.1 without null-conditional operator)
+# 2. Find mysql.exe — must exist or immediately abort
 $cmdObj = Get-Command mysql.exe -ErrorAction SilentlyContinue
 $mysql = if ($cmdObj) { $cmdObj.Source } else { $null }
 
@@ -42,7 +48,7 @@ if (!$mysql) {
         "${env:ProgramFiles(x86)}\MySQL\MySQL Server 8.0\bin\mysql.exe"
     )
     foreach ($cand in $candidates) {
-        if (Test-Path $cand) {
+        if (Test-Path -LiteralPath $cand) {
             $mysql = $cand
             break
         }
@@ -50,38 +56,83 @@ if (!$mysql) {
 }
 
 if (!$mysql) {
-    Write-Warning "mysql.exe CLI client was not found in PATH or standard installation directories."
-    Write-Host "Assuming MySQL is configured and managed externally. Continuing..."
-    exit 0
+    [Console]::Error.WriteLine("[ERROR] mysql.exe CLI client was not found in PATH or standard installation directories.")
+    [Console]::Error.WriteLine("Native Windows launch requires the MySQL client. Please add MySQL bin to PATH.")
+    exit 1
 }
 
 $env:MYSQL_PWD = $pass
-$clientArgs = @('-h', '127.0.0.1', '-P', '3306', "-u$user", '--skip-column-names', '--batch', '--raw')
+$clientArgs = @('--no-defaults', '-h', '127.0.0.1', '-P', '3306', "-u$user", '--skip-column-names', '--batch', '--raw')
 
-# Check if accounts table already exists
-try {
-    $checkSql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='campus_harmony' AND table_name='accounts';"
-    $tableCount = & $mysql @clientArgs -e $checkSql 2>$null
-    if ($LASTEXITCODE -eq 0 -and $tableCount -and [int]$tableCount.Trim() -gt 0) {
-        Write-Host "[OK] Database 'campus_harmony' is already initialized ($tableCount tables verified). Preserving existing records."
-        exit 0
+# 3. Verify MySQL server connection and authentication explicitly
+$testOutput = & $mysql @clientArgs -e "SELECT 1;" 2>&1
+$testExit = $LASTEXITCODE
+
+if ($testExit -ne 0) {
+    $errText = $testOutput | Out-String
+    if ($errText -match "Access denied|ERROR 1045") {
+        [Console]::Error.WriteLine("[DATABASE ERROR] MySQL authentication failed: Access denied for user '$user'.")
+        [Console]::Error.WriteLine("Please ensure that CAMPUS_DB_PASSWORD in .env matches your local MySQL server password.")
+    } elseif ($errText -match "Can't connect|ERROR 2003") {
+        [Console]::Error.WriteLine("[DATABASE ERROR] Could not connect to MySQL Server on 127.0.0.1:3306.")
+        [Console]::Error.WriteLine("Please ensure MySQL Server 8.0 service is running and listening on port 3306.")
+    } else {
+        [Console]::Error.WriteLine("[DATABASE ERROR] Failed to connect to MySQL: $errText")
     }
-}
-catch {
-    # If check failed (e.g. database does not exist yet), proceed to initialize
+    exit 1
 }
 
-Write-Host "[INFO] First-run detected. Initializing database 'campus_harmony' from $initSql..."
-try {
-    Get-Content -Raw $initSql | & $mysql @clientArgs
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "[ERROR] Failed to execute database initialization script."
+# 4. Check existing database state and table count in campus_harmony
+$tableCountRaw = & $mysql @clientArgs -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='campus_harmony';" 2>&1
+if ($LASTEXITCODE -ne 0) {
+    [Console]::Error.WriteLine("[DATABASE ERROR] Failed to inspect information_schema tables: $tableCountRaw")
+    exit 1
+}
+
+$tableCount = 0
+if (![int]::TryParse($tableCountRaw.ToString().Trim(), [ref]$tableCount)) {
+    $tableCount = 0
+}
+
+# 5. Evaluate target database safety
+if ($tableCount -gt 0) {
+    # Check core foundational academic tables
+    $coreSql = "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='campus_harmony' AND table_name IN ('departments','students','teachers','courses','course_offerings','sections','attendance_records','accounts','assessments','timetable_entries');"
+    $coreCountRaw = & $mysql @clientArgs -e $coreSql 2>&1
+    $coreCount = 0
+    if ([int]::TryParse($coreCountRaw.ToString().Trim(), [ref]$coreCount) -and $coreCount -ge 8) {
+        Write-Host "[OK] Existing populated database 'campus_harmony' verified ($tableCount tables, $coreCount/10 core structures intact)."
+        Write-Host "[OK] Preserving all existing academic data, attendance, and marks. Skipping destructive initialization."
+        exit 0
+    } else {
+        [Console]::Error.WriteLine("[DATABASE SAFETY ERROR] Database 'campus_harmony' already exists with $tableCount tables, but only $coreCount core tables were found.")
+        [Console]::Error.WriteLine("Because init_complete.sql contains destructive DROP TABLE statements, CampusHarmony will NOT overwrite an existing database.")
+        [Console]::Error.WriteLine("If you wish to re-initialize from scratch, please manually backup and drop the database 'campus_harmony'.")
         exit 1
     }
-    Write-Host "[OK] Database schema, stored procedures, triggers, and migrations applied successfully!"
-    exit 0
+}
+
+# 6. Verified clean/empty target: proceed with initialization
+Write-Host "[INFO] Verified clean target database. Initializing 'campus_harmony' schema, procedures, triggers, and migrations..."
+try {
+    Get-Content -LiteralPath $initSql -Raw | & $mysql @clientArgs
+    if ($LASTEXITCODE -ne 0) {
+        [Console]::Error.WriteLine("[ERROR] Failed to execute database initialization script.")
+        exit 1
+    }
+
+    # Verify tables were successfully created
+    $postCheckRaw = & $mysql @clientArgs -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='campus_harmony';" 2>&1
+    $postCount = 0
+    if ([int]::TryParse($postCheckRaw.ToString().Trim(), [ref]$postCount) -and $postCount -ge 30) {
+        Write-Host "[OK] Database successfully initialized with $postCount tables, views, triggers, and stored routines!"
+        exit 0
+    } else {
+        [Console]::Error.WriteLine("[ERROR] Initialization completed with unexpected table count: $postCount (expected >= 30).")
+        exit 1
+    }
 }
 catch {
-    Write-Error "[ERROR] Error during database initialization: $_"
+    [Console]::Error.WriteLine("[ERROR] Exception occurred during database initialization: $_")
     exit 1
 }

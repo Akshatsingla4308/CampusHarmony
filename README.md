@@ -168,7 +168,9 @@ CampusHarmony/
 │   ├── vite.config.js             # TanStack Start / Vite configuration
 │   └── vitest.config.js           # Frontend unit/component test configuration
 ├── scripts/                       # Automation and helper scripts
-│   └── init-db.ps1                # Idempotent PowerShell 5.1+ DB initializer
+│   ├── init-db.ps1                # Idempotent PowerShell 5.1+ database initializer
+│   ├── run.ps1                    # Safe PowerShell 5.1+ launcher & orchestrator
+│   └── stop.ps1                   # Safe PID-targeted service shutdown utility
 ├── .dockerignore                  # Docker build ignore rules
 ├── .env.example                   # Environment configuration template
 ├── .gitignore                     # Git ignore rules
@@ -241,6 +243,12 @@ This file executes:
 Create `.env` from `.env.example` in the project root:
 
 ```ini
+# --- Runtime Mode ---
+# Options: 'auto' (default: Docker if active and port 3306 free; else Native Windows),
+#          'native' (uses local JDK, Maven, Node.js, and local MySQL Server),
+#          'docker' (requires Docker Desktop running with port 3306 free)
+CAMPUS_RUN_MODE=auto
+
 # --- MySQL Database Configuration ---
 CAMPUS_DB_USER=root
 # REQUIRED: Set your actual local or container MySQL password
