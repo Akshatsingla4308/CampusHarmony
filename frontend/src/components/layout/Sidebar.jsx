@@ -68,14 +68,14 @@ export function Sidebar({ menuOpen, onNavigate }) {
     }
     return [
       {
-        title: "Academic Operations",
+        title: "Academics",
         items: [
           { name: "Dashboard", href: "/", icon: LayoutDashboard },
           { name: "Students", href: "/students", icon: Users },
-          { name: "Faculty / Teachers", href: "/teachers", icon: GraduationCap },
+          { name: "Teachers", href: "/teachers", icon: GraduationCap },
           { name: "Departments", href: "/departments", icon: Building2 },
-          { name: "Subjects Catalog", href: "/subjects", icon: BookOpen },
-          { name: "Courses & Enrollment", href: "/courses", icon: Layers },
+          { name: "Subjects", href: "/subjects", icon: BookOpen },
+          { name: "Courses", href: "/courses", icon: Layers },
         ],
       },
       {
@@ -83,7 +83,7 @@ export function Sidebar({ menuOpen, onNavigate }) {
         items: [
           { name: "Weekly Timetable", href: "/timetable", icon: Clock },
           { name: "Attendance Sessions", href: "/attendance", icon: CalendarCheck },
-          { name: "Attendance Analytics & Defaulters", href: "/defaulters", icon: AlertTriangle },
+          { name: "Attendance reports", href: "/defaulters", icon: AlertTriangle },
           { name: "Marks & Evaluations", href: "/marks", icon: Award },
           { name: "Academic Transcripts", href: "/transcript", icon: FileText },
         ],
@@ -96,7 +96,7 @@ export function Sidebar({ menuOpen, onNavigate }) {
         ],
       },
       {
-        title: "Academic Demonstrations (Chitkara)",
+        title: "Course demonstrations",
         items: [
           { name: "DBMS Stored Procedures & ACID", href: "/dbms-demo", icon: Database },
           { name: "Core Java CHO Demonstrations", href: "/java-demo", icon: Code2 },
@@ -134,10 +134,10 @@ export function Sidebar({ menuOpen, onNavigate }) {
       </div>
 
       {/* Navigation Sections */}
-      <nav aria-label="Portal navigation" className="flex-1 p-3 space-y-6 overflow-y-auto">
+      <nav aria-label="Portal navigation" className="flex-1 space-y-5 overflow-y-auto p-3">
         {navigationGroups.map((group) => (
           <div key={group.title}>
-            <div className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="mb-1.5 px-3 text-xs font-semibold text-muted-foreground">
               {group.title}
             </div>
             <div className="space-y-1">
@@ -150,9 +150,9 @@ export function Sidebar({ menuOpen, onNavigate }) {
                     to={item.href}
                     onClick={onNavigate}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex items-center gap-3 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                    className={`flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-xs font-semibold"
+                        ? "bg-sidebar-primary font-semibold text-sidebar-primary-foreground"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     }`}
                   >

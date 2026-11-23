@@ -30,7 +30,7 @@ export function DataTable({
         });
       }
       return Object.values(item).some(
-        (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(term)
+        (val) => val !== null && val !== undefined && String(val).toLowerCase().includes(term),
       );
     });
   }, [data, searchTerm, searchFields]);
@@ -79,13 +79,14 @@ export function DataTable({
   }
 
   return (
-    <div className="bg-card text-card-foreground rounded-xl border border-border overflow-hidden shadow-xs">
+    <div className="portal-card overflow-hidden">
       {/* Header Search & Actions Toolbar */}
       <div className="p-4 border-b border-border flex flex-col sm:flex-row items-center justify-between gap-3 bg-card">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
+            aria-label={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => {
               setSearchTerm(e.target.value);
@@ -95,26 +96,41 @@ export function DataTable({
             className="w-full pl-9 pr-3 py-1.5 text-sm rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-hidden focus:ring-2 focus:ring-ring"
           />
         </div>
-        {actions && <div className="flex items-center gap-2 w-full sm:w-auto justify-end">{actions}</div>}
+        {actions && (
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">{actions}</div>
+        )}
       </div>
 
       {/* Table Container */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" role="region" aria-label="Records table" tabIndex={0}>
         <table className="w-full text-sm text-left border-collapse">
           <thead className="bg-muted/50 text-xs uppercase font-semibold text-muted-foreground border-b border-border">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.key || col.header}
-                  onClick={() => col.sortable && handleSort(col.key)}
-                  className={`px-4 py-3 ${col.sortable ? "cursor-pointer select-none hover:text-foreground" : ""} ${
-                    col.className || ""
-                  }`}
+                  scope="col"
+                  aria-sort={
+                    sortConfig.key === col.key
+                      ? sortConfig.direction === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                  className={`px-4 py-3 ${col.className || ""}`}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <span>{col.header}</span>
-                    {col.sortable && <ArrowUpDown className="w-3.5 h-3.5 opacity-60" />}
-                  </div>
+                  {col.sortable ? (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground"
+                      onClick={() => handleSort(col.key)}
+                    >
+                      {col.header}
+                      <ArrowUpDown aria-hidden="true" className="size-3.5 opacity-60" />
+                    </button>
+                  ) : (
+                    col.header
+                  )}
                 </th>
               ))}
             </tr>
@@ -124,8 +140,11 @@ export function DataTable({
               paginatedData.map((row, idx) => (
                 <tr key={row[keyField] || idx} className="hover:bg-muted/30 transition-colors">
                   {columns.map((col) => (
-                    <td key={col.key || col.header} className={`px-4 py-3.5 ${col.className || ""}`}>
-                      {col.render ? col.render(row[col.key], row, idx) : row[col.key] ?? "—"}
+                    <td
+                      key={col.key || col.header}
+                      className={`px-4 py-3.5 ${col.className || ""}`}
+                    >
+                      {col.render ? col.render(row[col.key], row, idx) : (row[col.key] ?? "—")}
                     </td>
                   ))}
                 </tr>
@@ -153,7 +172,9 @@ export function DataTable({
       {sortedData.length > 0 && (
         <div className="p-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
           <div>
-            Showing <span className="font-medium text-foreground">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+            Showing{" "}
+            <span className="font-medium text-foreground">{(currentPage - 1) * pageSize + 1}</span>{" "}
+            to{" "}
             <span className="font-medium text-foreground">
               {Math.min(currentPage * pageSize, sortedData.length)}
             </span>{" "}

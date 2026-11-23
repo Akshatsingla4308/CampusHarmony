@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { request } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { DashboardMetrics } from "./DashboardOverview";
 
 const base = "/academic";
 const control =
   "w-full min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm disabled:opacity-60";
 const button =
   "rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-60";
-const panel = "rounded-xl border border-border bg-card p-4";
+const panel = "portal-card p-4";
 const options = (rows, key, label) => rows.map((row) => [row[key], row[label]]);
 const sectionLabel = (s) =>
   [s.department, s.term, "Sem " + s.semester, s.section_name ?? s.name].join(" · ");
@@ -82,12 +83,20 @@ function EntryForm({ title, path, fields, refresh }) {
     }
   }
   const anchor = path.split("/").pop();
+  const disclosure = useRef(null);
+  useEffect(() => {
+    function openTarget() {
+      if (window.location.hash === "#" + anchor) {
+        disclosure.current.open = true;
+        disclosure.current.scrollIntoView?.({ block: "start" });
+      }
+    }
+    openTarget();
+    window.addEventListener("hashchange", openTarget);
+    return () => window.removeEventListener("hashchange", openTarget);
+  }, [anchor]);
   return (
-    <details
-      id={anchor}
-      open={(typeof window !== "undefined" && window.location.hash === "#" + anchor) || undefined}
-      className={panel + " scroll-mt-20"}
-    >
+    <details ref={disclosure} id={anchor} className={panel + " scroll-mt-20"}>
       <summary className="cursor-pointer font-semibold">{title}</summary>
       <form onSubmit={submit} className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2">
         {missing.length > 0 && (
@@ -510,7 +519,7 @@ function Teacher({ offerings, revision, refresh, selection }) {
     </>
   );
 }
-export default function AcademicWorkspace({ selection }) {
+export default function AcademicWorkspace({ selection, overview = false }) {
   const { role } = useAuth(),
     [revision, setRevision] = useState(0);
   const refresh = () => setRevision((n) => n + 1);
@@ -519,7 +528,7 @@ export default function AcademicWorkspace({ selection }) {
   const attendance = useRows(role === "student" ? "/my-attendance" : null, revision);
   const error = catalog.error || offerings.error || attendance.error;
   return (
-    <section className="grid gap-4 max-w-3xl">
+    <section className="grid min-w-0 gap-4 max-w-4xl">
       <h2 className="font-bold text-xl">
         {
           {
@@ -544,10 +553,32 @@ export default function AcademicWorkspace({ selection }) {
           <p role="status">Loading academic records…</p>
         )}
       {role === "admin" && catalog.data && offerings.data && (
-        <Admin catalog={catalog.data} offerings={offerings.data} refresh={refresh} />
+        <>
+          {overview && (
+            <DashboardMetrics
+              items={[
+                ["Departments", catalog.data.departments.length],
+                ["Sections", catalog.data.sections.length],
+                ["Teacher accounts", catalog.data.teachers.length],
+                ["Course assignments", offerings.data.length],
+              ]}
+            />
+          )}
+          <Admin catalog={catalog.data} offerings={offerings.data} refresh={refresh} />
+        </>
       )}
       {role === "teacher" && offerings.data && (
-        <Teacher offerings={offerings.data} {...{ revision, refresh, selection }} />
+        <>
+          {overview && (
+            <DashboardMetrics
+              items={[
+                ["Assigned courses", new Set(offerings.data.map((o) => o.code)).size],
+                ["Assigned sections", new Set(offerings.data.map((o) => o.section_id)).size],
+              ]}
+            />
+          )}
+          <Teacher offerings={offerings.data} {...{ revision, refresh, selection }} />
+        </>
       )}
       {attendance.data &&
         (attendance.data.length ? (

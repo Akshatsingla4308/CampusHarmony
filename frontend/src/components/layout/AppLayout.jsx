@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
@@ -9,6 +9,15 @@ export function AppLayout({ children }) {
   const path = useRouterState().location.pathname;
   const [openMenuPath, setOpenMenuPath] = useState(null);
   const menuOpen = openMenuPath === path;
+  useEffect(() => {
+    if (menuOpen) document.querySelector("#portal-navigation nav a")?.focus();
+  }, [menuOpen]);
+
+  function closeMenuOnEscape(event) {
+    if (!menuOpen || event.key !== "Escape") return;
+    setOpenMenuPath(null);
+    document.getElementById("portal-menu-toggle")?.focus();
+  }
   if (loading) return <main className="p-6">Checking session…</main>;
   if (!user) return <SignIn />;
   const foundation =
@@ -19,11 +28,21 @@ export function AppLayout({ children }) {
     path === "/defaulters" ||
     path === "/complaints";
   return (
-    <div className="min-h-screen lg:flex">
+    <div className="min-h-screen lg:flex" onKeyDown={closeMenuOnEscape}>
+      <a
+        href="#main-content"
+        className="portal-button sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50"
+      >
+        Skip to content
+      </a>
       <Sidebar menuOpen={menuOpen} onNavigate={() => setOpenMenuPath(null)} />
       <div className="flex-1 min-w-0">
         <Navbar menuOpen={menuOpen} toggleMenu={() => setOpenMenuPath(menuOpen ? null : path)} />
-        <main className="p-4 sm:p-6">
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="mx-auto max-w-screen-2xl min-w-0 p-4 sm:p-6 lg:px-8"
+        >
           {error && <p role="alert">{error}</p>}
           {foundation || user.role === "admin" || path === "/profile" ? (
             children

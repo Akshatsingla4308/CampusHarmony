@@ -33,17 +33,17 @@ export function Navbar({ menuOpen, toggleMenu }) {
 
   const getPageTitle = (path) => {
     if (path === "/") return "Dashboard";
-    if (path.startsWith("/students")) return "Student Directory & Admissions";
-    if (path.startsWith("/teachers")) return "Faculty & Instructors Directory";
-    if (path.startsWith("/departments")) return "Academic Departments Master";
-    if (path.startsWith("/subjects")) return "Subjects & Course Curriculum";
-    if (path.startsWith("/courses")) return "Course Offerings & Registrations";
+    if (path.startsWith("/students")) return "Students";
+    if (path.startsWith("/teachers")) return "Teachers";
+    if (path.startsWith("/departments")) return "Departments";
+    if (path.startsWith("/subjects")) return "Subjects";
+    if (path.startsWith("/courses")) return "Courses";
     if (path.startsWith("/attendance")) return "Attendance";
     if (path === "/timetable") return "Timetable";
     if (path === "/complaints") return "Complaints";
-    if (path.startsWith("/marks")) return "Student Marks & Evaluations";
+    if (path.startsWith("/marks")) return "Marks and assessments";
     if (path.startsWith("/transcript")) return "Official Academic Transcripts";
-    if (path.startsWith("/defaulters")) return "Attendance Defaulter Analytics";
+    if (path.startsWith("/defaulters")) return "Attendance reports";
     if (path.startsWith("/activities")) return "Extracurricular Activities";
     if (path.startsWith("/dbms-demo")) return "DBMS Advanced Demonstrations (50 Marks)";
     if (path.startsWith("/java-demo")) return "Programming in Java CHO Demonstration (25 Marks)";
@@ -52,43 +52,36 @@ export function Navbar({ menuOpen, toggleMenu }) {
   };
 
   return (
-    <header className="h-16 border-b border-border bg-card px-3 sm:px-6 flex items-center justify-between gap-2 sticky top-0 z-30 shadow-2xs">
+    <header className="h-16 border-b border-border bg-card px-3 sm:px-6 lg:px-8 flex items-center justify-between gap-2 sticky top-0 z-30">
       {/* Page Title & Breadcrumb */}
       <div className="flex min-w-0 items-center gap-2">
         <button
+          id="portal-menu-toggle"
           type="button"
           onClick={toggleMenu}
           aria-expanded={menuOpen}
           aria-controls="portal-navigation"
           aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-          className="rounded-md border border-border p-2 lg:hidden"
+          className="portal-button px-2.5 lg:hidden"
         >
           {menuOpen ? <X size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
         </button>
         <div className="min-w-0">
-          <h1 className="truncate text-sm sm:text-base font-bold text-foreground">
+          <h1 className="truncate text-sm sm:text-base font-semibold text-foreground">
             {getPageTitle(currentPath)}
           </h1>
-          <div className="hidden sm:flex text-xs text-muted-foreground mt-1 items-center gap-1.5 font-medium">
-            <span>Campus Harmony</span>
-            <span>/</span>
-            <span className="capitalize">{currentPath.replace("/", "") || "Dashboard"}</span>
-          </div>
         </div>
       </div>
 
       {/* Right Controls */}
       <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <button
-          onClick={logout}
-          className="whitespace-nowrap rounded border border-border px-2 py-2 text-sm"
-        >
+        <button onClick={logout} className="portal-button whitespace-nowrap">
           Sign out
         </button>
         {/* Theme Toggle Button */}
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          className="portal-button px-2.5"
           title="Toggle Light / Dark Mode"
           aria-label={isDark ? "Use light theme" : "Use dark theme"}
         >
@@ -100,6 +93,7 @@ export function Navbar({ menuOpen, toggleMenu }) {
           to="/profile"
           className="flex items-center gap-2.5 pl-2 border-l border-border hover:opacity-80 transition-opacity"
           title="View Profile"
+          aria-label="View profile"
         >
           <div className="w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs">
             {user?.name ? user.name.charAt(0) : "U"}

@@ -1,22 +1,27 @@
 import React from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
-export function ErrorMessage({ error, onRetry }) {
-  const message = typeof error === "string" ? error : error?.message || "An unexpected error occurred.";
+export function ErrorMessage({ error, message: fallback, onRetry }) {
+  const message =
+    (typeof error === "string" ? error : error?.message) ||
+    fallback ||
+    "An unexpected error occurred.";
 
   return (
-    <div className="p-4 mb-6 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive flex items-start gap-3 shadow-xs">
-      <AlertCircle className="w-5 h-5 mt-0.5 shrink-0" />
-      <div className="flex-1">
-        <h4 className="text-sm font-semibold">Backend Connection / Operation Error</h4>
-        <p className="text-xs mt-1 text-destructive/90">{message}</p>
+    <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+      <AlertCircle aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
+      <div className="min-w-0 flex-1">
+        <p role="alert" className="break-words text-sm">
+          {message}
+        </p>
         {onRetry && (
           <button
+            type="button"
             onClick={onRetry}
             className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Retry Request
+            Try again
           </button>
         )}
       </div>

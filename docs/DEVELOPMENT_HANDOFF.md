@@ -628,3 +628,31 @@ All workflows were executed and verified via real browser automation in the live
 | **Backend Integration Suites** | Disposable MySQL | 5 workflow suites (`FoundationWorkflowIT`, `MarksWorkflowIT`, `TimetableWorkflowIT`, `AnalyticsWorkflowIT`, `ComplaintWorkflowIT`) | **5 passed, 0 failures (`BUILD SUCCESS`)** |
 | **Live Browser Walkthrough** | Chromium / Webview | Full Admin → Teacher → Student → Admin grievance lifecycle | **100% verified with screenshot evidence** |
 
+## Phase 4C — Shared design and dashboard first batch
+
+Started on a clean `phase-4b` at `53b8655`, with `phase-4b-checkpoint` present. The Phase 4B browser and integration results above are historical evidence.
+
+### Audit and changes
+
+| Area | Issue and improvement |
+| --- | --- |
+| Shared shell | The dashboard repeated the route title and breadcrumb while the sidebar used long labels in small type. The shell now has a simpler header, clearer sidebar labels and active states, a consistent content width, and restrained surface and accent colors in light and dark mode. |
+| Keyboard and mobile | The sidebar opens with focus on its first navigation link and Escape returns focus to the trigger. A skip link reaches main content. Shared tables have a labeled scroll region, named search and keyboard-operable sort buttons. |
+| Shared feedback | Loading panels announce progress and respect reduced motion. Errors show the actual message and a retry action where supported. The error component now also honors existing callers that supply a message prop. |
+| Admin dashboard | Academic catalog and assignment counts come from the same data as the existing setup workspace. Attendance totals, averages and below-threshold counts come from the analytics API. Complaint counts use the existing admin complaint stats API. Teacher, student and assignment actions open the corresponding setup form. |
+| Teacher dashboard | Today's API schedule shows course, time, room, section and attendance status. Assigned course and section counts come from the existing workspace. Attendance and marks shortcuts retain their established routes. The existing timetable Conduct action remains the way to open a specific lecture roster. |
+| Student dashboard | The dashboard shows account identity, today's timetable, attendance standing and warnings, three recent assessments and complaint counts from authenticated endpoints. Subject-wise records remain in the workspace. Zero attendance is distinct from no recorded lectures. Each overview panel can report a failure independently. |
+
+Modified `frontend/src/styles.css`, `routes/index.jsx`, `components/AcademicWorkspace.jsx`, the shared layout files `AppLayout.jsx`, `Navbar.jsx` and `Sidebar.jsx`, and the shared feedback and table components `DataTable.jsx`, `LoadingState.jsx` and `ErrorMessage.jsx`. Added `DashboardOverview.jsx` and `DashboardOverview.test.jsx`. No backend source or migrations were changed.
+
+### Verification and evidence
+
+- Reviewed the archived `docs/screenshots/01_dashboard.png` as an older visual baseline. It shows the previous duplicate header and oversized loading panel. The handoff contains Phase 4B browser results. A fresh authenticated dashboard screenshot was unavailable in this run.
+- In the live in-app browser, the local homepage hydrated to Sign in without console errors. The sign-in screen showed no document-wide horizontal overflow at 390, 768, 1366 and 1920 px. Direct navigation to `/attendance` also required sign-in. The authenticated dashboards, navigation and workflow interactions were not exercised in this browser session.
+- Prettier and `git diff --check` succeeded. Added two dashboard regressions for an independent complaint-panel retry, scope of role requests, recorded zero attendance and chronological results.
+- Fresh Vitest and production builds were attempted. Automated approval review blocked collecting final results after detecting telemetry to `dc.services.visualstudio.com` with an unverified payload. There is no new confirmed frontend pass or backend integration result for Phase 4C. The previous Phase 4B results remain available above.
+
+### Next batch
+
+First verify the authenticated layouts and keyboard behavior at the four target widths against the disposable Windows database. Next refine setup selectors and teacher roster and marks entry. The dashboard uses supported catalog and analytics metrics. Institution-wide headcounts, attendance trends and current-term filtering need an explicit API/data review before display.
+
