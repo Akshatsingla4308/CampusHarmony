@@ -172,8 +172,175 @@ function Register({ sections, refresh }) {
     />
   );
 }
+function AssignOfferingForm({ catalog: c, offerings, refresh }) {
+  const [sectionId, setSectionId] = useState("");
+  const [courseCode, setCourseCode] = useState("");
+  const [teacherId, setTeacherId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const anchor = "offerings";
+  const disclosure = useRef(null);
+  useEffect(() => {
+    function openTarget() {
+      if (window.location.hash === "#" + anchor && disclosure.current) {
+        disclosure.current.open = true;
+        disclosure.current.scrollIntoView?.({ block: "start" });
+      }
+    }
+    openTarget();
+    window.addEventListener("hashchange", openTarget);
+    return () => window.removeEventListener("hashchange", openTarget);
+  }, [anchor]);
+
+  const selectedSection = c.sections.find((s) => String(s.id) === String(sectionId));
+  const availableCourses = c.courses.filter((course) => {
+    if (!selectedSection) return true;
+    if (selectedSection.department && course.department) {
+      return course.department === selectedSection.department;
+    }
+    return true;
+  });
+  const availableTeachers = c.teachers.filter((t) => {
+    if (!selectedSection) return true;
+    if (selectedSection.department && t.department) {
+      return t.department === selectedSection.department;
+    }
+    return true;
+  });
+
+  const existingOffering = offerings.find(
+    (o) => String(o.section_id) === String(sectionId) && o.code === courseCode,
+  );
+
+  async function submit(e) {
+    e.preventDefault();
+    if (!sectionId || !courseCode || !teacherId) return;
+    if (existingOffering) {
+      setError(`Course ${courseCode} is already assigned to this section.`);
+      return;
+    }
+    setBusy(true);
+    setMessage("");
+    setError("");
+    try {
+      await request(base + "/offerings", {
+        method: "POST",
+        body: { sectionId: Number(sectionId), courseCode, teacherId },
+      });
+      setMessage("Course offering successfully assigned to section.");
+      setCourseCode("");
+      setTeacherId("");
+      refresh();
+    } catch (err) {
+      setError(err.message || "Failed to assign course offering");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <details ref={disclosure} id={anchor} className={panel + " scroll-mt-20"}>
+      <summary className="cursor-pointer font-semibold">Assign teacher and course</summary>
+      <form onSubmit={submit} className="mt-4 grid max-w-2xl gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 sm:col-span-2">
+          Section
+          <select
+            required
+            className={control}
+            value={sectionId}
+            onChange={(e) => {
+              setSectionId(e.target.value);
+              setCourseCode("");
+              setTeacherId("");
+            }}
+          >
+            <option value="">Choose academic section…</option>
+            {c.sections.map((s) => (
+              <option key={s.id} value={s.id}>
+                {sectionLabel(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1">
+          Course
+          <select
+            required
+            className={control}
+            value={courseCode}
+            disabled={!sectionId || availableCourses.length === 0}
+            onChange={(e) => setCourseCode(e.target.value)}
+          >
+            <option value="">
+              {!sectionId
+                ? "Select section first…"
+                : availableCourses.length
+                  ? "Choose course…"
+                  : "No matching courses"}
+            </option>
+            {availableCourses.map((course) => (
+              <option key={course.code} value={course.code}>
+                {course.code} · {course.name} (Sem {course.semester})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="grid gap-1">
+          Teacher
+          <select
+            required
+            className={control}
+            value={teacherId}
+            disabled={!sectionId || availableTeachers.length === 0}
+            onChange={(e) => setTeacherId(e.target.value)}
+          >
+            <option value="">
+              {!sectionId
+                ? "Select section first…"
+                : availableTeachers.length
+                  ? "Choose teacher…"
+                  : "No matching teachers"}
+            </option>
+            {availableTeachers.map((t) => (
+              <option key={t.teacher_id} value={t.teacher_id}>
+                {t.name} ({t.teacher_id} · {t.department || "Faculty"})
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {existingOffering && (
+          <p role="alert" className="text-xs text-amber-600 dark:text-amber-400 sm:col-span-2">
+            Notice: Course {courseCode} is already assigned to this section.
+          </p>
+        )}
+
+        <button
+          disabled={busy || !sectionId || !courseCode || !teacherId || !!existingOffering}
+          className={button + " w-fit sm:col-span-2"}
+        >
+          {busy ? "Assigning…" : "Assign teacher and course"}
+        </button>
+      </form>
+      {message && (
+        <p role="status" className="mt-3 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+    </details>
+  );
+}
 function Admin({ catalog: c, offerings, refresh }) {
-  const departments = options(c.departments, "id", "name"),
+  const departments = c.departments.map((d) => [d.id, `${d.name} (${d.code || d.id})`]),
     subjects = options(c.subjects, "subject_key", "label");
   const sections = c.sections.map((s) => [s.id, sectionLabel(s)]),
     code = ["code", "Code"],
@@ -197,7 +364,12 @@ function Admin({ catalog: c, offerings, refresh }) {
     [
       "Create section",
       "/sections",
-      [name, dept, ["termId", "Academic term", options(c.terms, "id", "name")], semester],
+      [
+        name,
+        dept,
+        ["termId", "Academic term", c.terms.map((t) => [t.id, `${t.name} (${t.term} ${t.year})`])],
+        semester,
+      ],
     ],
     [
       "Add course",
@@ -213,15 +385,6 @@ function Admin({ catalog: c, offerings, refresh }) {
         dept,
         subject,
         ["password", "Initial password (12 or more characters)", "password"],
-      ],
-    ],
-    [
-      "Assign teacher and course",
-      "/offerings",
-      [
-        ["sectionId", "Section", sections],
-        ["courseCode", "Course", options(c.courses, "code", "name")],
-        ["teacherId", "Teacher", options(c.teachers, "teacher_id", "name")],
       ],
     ],
     [
@@ -241,8 +404,8 @@ function Admin({ catalog: c, offerings, refresh }) {
   const groups = [
     ["Academic catalog", forms.slice(0, 3)],
     ["Sections and courses", forms.slice(3, 5)],
-    ["Accounts and teaching assignments", forms.slice(5, 7)],
-    ["Dated lectures", forms.slice(7)],
+    ["Accounts and teaching assignments", forms.slice(5, 6)],
+    ["Dated lectures", forms.slice(6)],
   ];
   return groups.map(([label, entries], index) => (
     <section key={label} className="grid gap-2">
@@ -250,7 +413,12 @@ function Admin({ catalog: c, offerings, refresh }) {
       {entries.map(([title, path, fields]) => (
         <EntryForm key={path} {...{ title, path, fields, refresh }} />
       ))}
-      {index === 2 && <Register sections={sections} refresh={refresh} />}
+      {index === 2 && (
+        <>
+          <AssignOfferingForm catalog={c} offerings={offerings} refresh={refresh} />
+          <Register sections={sections} refresh={refresh} />
+        </>
+      )}
     </section>
   ));
 }

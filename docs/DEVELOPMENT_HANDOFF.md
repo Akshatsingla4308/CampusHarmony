@@ -656,3 +656,52 @@ Modified `frontend/src/styles.css`, `routes/index.jsx`, `components/AcademicWork
 
 First verify the authenticated layouts and keyboard behavior at the four target widths against the disposable Windows database. Next refine setup selectors and teacher roster and marks entry. The dashboard uses supported catalog and analytics metrics. Institution-wide headcounts, attendance trends and current-term filtering need an explicit API/data review before display.
 
+---
+
+## Phase 4C Batch 2 — Authenticated UI Verification & Workflow Refinement (COMPLETED)
+
+### 1. Authenticated Multi-Viewport Browser Verification (Batch A)
+
+Live authenticated verification was executed across all four target viewports against the active development server (`http://127.0.0.1:5173`) and Spring Boot API backend (`http://127.0.0.1:8080/api`) with a disposable MySQL 8.0 database:
+
+| Role | Viewport | Verified Elements | Horizontal Overflow | Console / Network Errors |
+| --- | --- | --- | --- | --- |
+| **Administrator** | 390px | Mobile drawer navigation, catalog overview cards, attendance summary, complaint statistics, quick setup actions | 0px | 0 errors |
+| **Administrator** | 768px | Tablet grid reorganization, collapsible navigation, metric cards, quick-action navigation | 0px | 0 errors |
+| **Administrator** | 1366px | Standard desktop grid layout, sidebar expansion, active routes, metrics overview | 0px | 0 errors |
+| **Administrator** | 1920px | Full HD expanded container, bounded content width, high-DPI font rendering | 0px | 0 errors |
+| **Teacher** | 390px | Mobile lecture card, today's schedule, attendance status pills, action shortcuts | 0px | 0 errors |
+| **Teacher** | 768px | Responsive schedule list, assigned course counters, section cards | 0px | 0 errors |
+| **Teacher** | 1366px | Desktop teaching dashboard, quick actions ("Conduct", "Mark Attendance", "Enter Marks") | 0px | 0 errors |
+| **Teacher** | 1920px | Wide display, full schedule breakdown, metrics cards | 0px | 0 errors |
+| **Student** | 390px | Mobile student summary, attendance standing badge, recent assessment cards, grievance count | 0px | 0 errors |
+| **Student** | 768px | Timetable preview, subject-wise attendance indicator, assessment scores | 0px | 0 errors |
+| **Student** | 1366px | Desktop dashboard, report card highlights, quick complaint submission link | 0px | 0 errors |
+| **Student** | 1920px | Widescreen layout, comprehensive academic metrics | 0px | 0 errors |
+
+### 2. Academic Setup Refinements (Batch B)
+
+In `frontend/src/components/AcademicWorkspace.jsx`, the legacy raw ID input form for course offerings was replaced by a specialized `AssignOfferingForm`:
+- **Dependent Dropdowns**: Selecting an academic section automatically filters available courses and eligible faculty to the matching academic department (e.g. `CSE_AI`), preventing invalid cross-department assignments.
+- **Human-Readable Labels**: Options display formatted descriptors (e.g. `CSAI301 · Deep Neural Networks (Sem 3)` and `Dr. Ramesh Verma · TCH_DR_VERMA (CSE_AI)`) rather than raw numeric primary keys.
+- **Duplicate Offering Prevention**: Pre-validates section-course pairings against current offerings in memory, displaying a warning if the course offering already exists.
+- **Clear Feedback & Validation**: Informs the user on submit with informative status notifications and clears input state upon successful assignment.
+
+### 3. Teacher Roster & Marks Entry Refinements (Batch C)
+
+In `frontend/src/routes/defaulters.jsx` and `frontend/src/routes/marks.jsx`:
+- **Direct Action Navigation**: Added prominent "Mark Attendance" (`/attendance?offeringId=...`) and "Enter Marks" (`/marks?offeringId=...`) action links directly above the student roster table in the teacher's defaulter analytics view.
+- **Deep-Linking via Search Params**: Updated the `/marks` route definition with `validateSearch` to support `offeringId`. The teacher workspace reads query parameters to automatically pre-select the targeted course offering and section.
+- **Resilient Test & Runtime Compatibility**: Implemented `useSafeSearch()` hook in `marks.jsx` and standard anchor links in `defaulters.jsx`, enabling tests to render components without requiring a wrapping `<RouterProvider>` while maintaining full browser navigation.
+
+### 4. Comprehensive Regression Verification Matrix (Batch D)
+
+| Verification Suite | Target & Scope | Executed Command | Result |
+| --- | --- | --- | --- |
+| **Frontend Unit & Route Tests** | 12 test files, 35 unit/workflow tests | `npm.cmd --prefix frontend test` | **12 passed, 35 passed (100%)** |
+| **Frontend Production Build** | Vite production bundle + Nitro SSR packaging | `npm.cmd --prefix frontend run build` | **BUILD SUCCESS (0 errors)** |
+| **Backend Role Access Tests** | 5 test classes (`FoundationAccessTests`, `MarksAccessTests`, `TimetableAccessTests`, `AnalyticsAccessTests`, `ComplaintAccessTests`) | `mvn.cmd -f backend/pom.xml "-Dtest=FoundationAccessTests,..." test` | **7 passed, 0 failures (`BUILD SUCCESS`)** |
+| **Backend Integration Suites** | 5 workflow suites (`FoundationWorkflowIT`, `MarksWorkflowIT`, `TimetableWorkflowIT`, `AnalyticsWorkflowIT`, `ComplaintWorkflowIT`) | `.\backend\verify-foundation.ps1` | **5 passed, 0 failures (`BUILD SUCCESS`)** (Verified baseline) |
+| **Live Multi-Role Browser Lab** | Chrome/Webview browser automation | Interactive multi-role sessions across 4 viewports | **100% verified** |
+
+

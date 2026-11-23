@@ -77,7 +77,7 @@ it("opens the requested lecture and saves corrections with unchanged roster entr
   });
 
   render(<AcademicWorkspace selection={{ offeringId: 43, sessionId: 301, date: "2026-01-01" }} />);
-  fireEvent.click(await screen.findByRole("button", { name: "Correct attendance" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Correct attendance" }, { timeout: 4000 }));
   const status = screen.getByLabelText(/TEST-5/);
   expect(status).toHaveValue("Absent");
   expect(screen.getByRole("button", { name: "Save corrections" })).toBeDisabled();

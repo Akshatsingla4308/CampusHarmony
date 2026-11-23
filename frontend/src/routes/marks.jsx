@@ -23,6 +23,10 @@ import LoadingState from "../components/common/LoadingState";
 import ErrorMessage from "../components/common/ErrorMessage";
 
 export const Route = createFileRoute("/marks")({
+  validateSearch: ({ offeringId }) => {
+    const valid = Number(offeringId);
+    return Number.isSafeInteger(valid) && valid > 0 ? { offeringId: valid } : {};
+  },
   component: MarksManagementPage,
 });
 
@@ -55,10 +59,19 @@ function gradeColor(grade) {
   }
 }
 
+function useSafeSearch() {
+  try {
+    return Route.useSearch();
+  } catch {
+    return {};
+  }
+}
+
 // =============================================================================
 // TEACHER WORKSPACE COMPONENT
 // =============================================================================
 function TeacherMarksWorkspace() {
+  const search = useSafeSearch();
   const [offerings, setOfferings] = useState([]);
   const [selectedSection, setSelectedSection] = useState("");
   const [selectedOffering, setSelectedOffering] = useState("");
@@ -97,12 +110,10 @@ function TeacherMarksWorkspace() {
         const list = Array.isArray(res) ? res : [];
         setOfferings(list);
         if (list.length > 0) {
-          const firstSection = String(list[0].section_id);
-          setSelectedSection(firstSection);
-          const firstOffering = list.find((o) => String(o.section_id) === firstSection);
-          if (firstOffering) {
-            setSelectedOffering(String(firstOffering.id));
-          }
+          const match = search?.offeringId && list.find((o) => o.id === search.offeringId);
+          const activeOffering = match || list[0];
+          setSelectedSection(String(activeOffering.section_id));
+          setSelectedOffering(String(activeOffering.id));
         }
       } catch (err) {
         setError(err.message || "Failed to load assigned course offerings");
@@ -111,7 +122,7 @@ function TeacherMarksWorkspace() {
       }
     }
     loadOfferings();
-  }, []);
+  }, [search?.offeringId]);
 
   // 2. Load Assessments when Course Offering changes
   useEffect(() => {
