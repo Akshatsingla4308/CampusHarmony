@@ -2,87 +2,152 @@
 
 **CampusHarmony** is a full-stack, enterprise-grade Academic Management System designed for colleges and universities. It integrates academic structure administration, course offerings, lecture-wise attendance management, marks evaluation, timetable scheduling, attendance analytics, and student grievance resolution into a unified, responsive platform.
 
+GitHub Repository: [https://github.com/Akshatsingla4308/CampusHarmony.git](https://github.com/Akshatsingla4308/CampusHarmony.git)
+
 ---
 
 ## Table of Contents
 
-1. [Main Features](#main-features)
-2. [User Roles & Workflows](#user-roles--workflows)
-3. [Technology Stack](#technology-stack)
-4. [Project Folder Structure](#project-folder-structure)
-5. [Prerequisites & Required Software](#prerequisites--required-software)
-6. [First-Time Installation & Setup](#first-time-installation--setup)
-7. [Environment Variables Configuration](#environment-variables-configuration)
-8. [One-Click Startup (RUN_CAMPUSHARMONY.bat)](#one-click-startup-run_campusharmonybat)
-9. [Safe Service Shutdown (STOP_CAMPUSHARMONY.bat)](#safe-service-shutdown-stop_campusharmonybat)
-10. [Accessing the Application](#accessing-the-application)
-11. [Initial Administrator Provisioning](#initial-administrator-provisioning)
-12. [Running Tests](#running-tests)
-13. [Database Architecture & Persistence](#database-architecture--persistence)
-14. [Troubleshooting Guide](#troubleshooting-guide)
-15. [Cloning & Uploading to GitHub](#cloning--uploading-to-github)
+1. [Project Overview](#1-project-overview)
+2. [Problem Statement](#2-problem-statement)
+3. [Main Features](#3-main-features)
+4. [Administrator Functionality](#4-administrator-functionality)
+5. [Teacher Functionality](#5-teacher-functionality)
+6. [Student Functionality](#6-student-functionality)
+7. [Technology Stack](#7-technology-stack)
+8. [System Architecture (Frontend / Backend / Database)](#8-system-architecture)
+9. [Complete Folder Structure](#9-complete-folder-structure)
+10. [Software Prerequisites](#10-software-prerequisites)
+11. [First-Time Installation](#11-first-time-installation)
+12. [Database Initialization](#12-database-initialization)
+13. [How to Configure Environment Variables](#13-how-to-configure-environment-variables)
+14. [How to Launch the Entire Application](#14-how-to-launch-the-entire-application)
+15. [How to Stop the Application](#15-how-to-stop-the-application)
+16. [How to Access the Website](#16-how-to-access-the-website)
+17. [How to Securely Create the First Administrator](#17-how-to-securely-create-the-first-administrator)
+18. [How to Run Frontend Tests](#18-how-to-run-frontend-tests)
+19. [How to Run Backend Tests](#19-how-to-run-backend-tests)
+20. [Troubleshooting Common Errors](#20-troubleshooting-common-errors)
 
 ---
 
-## Main Features
+## 1. Project Overview
 
-- **Academic Foundation & Structure**: Departments, academic terms, semesters, sections, courses, and course offerings with strict relational integrity.
-- **Role-Based Access Control (RBAC)**: Secure session-based authentication separating Administrator, Teacher, and Student permissions with interceptor guards.
-- **Lecture-Wise Attendance Management**: Date- and slot-based attendance tracking, bulk Present/Absent toggle, roster search, live attendance counters, and audit-logged corrections.
-- **Dynamic Assessments & Evaluations**: Multi-component grading (Internal, Midterm, End-Semester, Assignment, Quiz, Project) with score validation and audit tracking.
-- **Interactive Timetable & Lecture Scheduling**: Section-wise weekly schedule grid, conflict-prevention constraints, timetable-to-attendance jump, and responsive mobile day view.
-- **Attendance Analytics & Defaulters**: Real-time attendance percentages, threshold filters (e.g. <75%), shortfall lecture recovery calculations, and defaulter audits.
-- **Student Grievance & Complaint Redressal**: Student ticket filing, category tagging, administrative status updates (Pending, In Review, Resolved, Dismissed), and resolution logging.
+CampusHarmony modernizes higher education academic administration. Instead of maintaining disjointed spreadsheets and isolated legacy tools, CampusHarmony brings departments, terms, sections, course offerings, lecture attendance, continuous marks evaluation, weekly schedules, attendance defaulter tracking, and student complaints into a cohesive, secure, role-based system.
 
 ---
 
-## User Roles & Workflows
+## 2. Problem Statement
 
-### 1. Administrator
-- Manage academic catalog: Departments, Terms, Sections, Courses, and Offerings.
-- Assign faculty to sections and enroll students into cohorts.
-- View system-wide attendance trends, analytics, and defaulter rosters.
-- Triage and resolve student grievances and complaints.
-- Register teacher and student accounts.
+Higher education institutions frequently suffer from fragmented administrative workflows:
+- **Attendance Discrepancies**: Paper rosters and manual roll calls delay defaulter identification, preventing timely student interventions.
+- **Marks Inconsistencies**: Ad-hoc spreadsheets lack transactional consistency, audit trails, and automated grade calculations.
+- **Timetable Conflicts**: Manual room and faculty allocations lead to overlapping periods and student scheduling confusion.
+- **Unresolved Grievances**: Student complaints regarding discrepancies or evaluations lack transparent tracking and accountability.
+- **Siloed Systems**: Students, teachers, and administrators operate on different platforms without real-time data synchronization.
 
-### 2. Teacher
-- View assigned course offerings and timetable schedule.
-- Conduct lecture attendance with quick Present/Absent toggles and search filters.
-- Submit and update assessment marks with real-time validation and change detection.
-- Audit attendance corrections with mandatory reason logging.
-
-### 3. Student
-- View personalized timetable and class schedule.
-- Track course-wise attendance percentages, attended/conducted counts, and shortfall warnings.
-- Check assessment marks and evaluation grades.
-- Submit complaints/grievances and track resolution progress.
+CampusHarmony solves these challenges by providing a relational database foundation backed by ACID guarantees, a secured Spring Boot REST backend with role-based access control, and a responsive React client interface.
 
 ---
 
-## Technology Stack
+## 3. Main Features
+
+- **Academic Catalog Management**: Strict hierarchies for Departments, Academic Terms, Semesters, Sections, Subjects, Courses, and Section Offerings.
+- **Lecture-Wise Attendance Tracking**: Date- and slot-based attendance logging with bulk toggle controls, live counters, search filtering, and audit-logged corrections.
+- **Multi-Component Marks & Evaluations**: Support for Internal, Midterm, End-Semester, Assignment, Quiz, and Project components with real-time score validation.
+- **Interactive Weekly Timetable**: Section-specific schedule grid with conflict-prevention constraints, timetable-to-attendance jump links, and responsive mobile day view.
+- **Attendance Analytics & Defaulters**: Real-time attendance percentage aggregation, threshold filtering (e.g., <75%), and mathematical shortfall lecture calculation.
+- **Student Complaints & Grievance Redressal**: Student ticket filing, category tagging, administrative status updates (Pending, In Review, Resolved, Dismissed), and resolution audit logs.
+
+---
+
+## 4. Administrator Functionality
+
+- **Catalog Administration**: Create and manage Departments, Terms, Sections, and Courses.
+- **Cohort Allocations**: Assign faculty to course offerings and enroll student cohorts into sections.
+- **System-Wide Oversight**: View institution-wide attendance summaries, low-attendance alerts, and course performance analytics.
+- **Complaint Resolution**: Triage incoming student grievances, update status with resolution remarks, and monitor redressed issues.
+- **Account Provisioning**: Register verified Teacher and Student user accounts linked to faculty and student records.
+
+---
+
+## 5. Teacher Functionality
+
+- **Teaching Dashboard**: Access active course offerings, section rosters, and weekly timetable schedules.
+- **Daily Lecture Attendance**: Mark attendance for scheduled lectures with bulk "All Present" / "All Absent" shortcuts and student search.
+- **Attendance Corrections**: Edit existing attendance records with mandatory audit justification logging.
+- **Continuous Evaluation**: Record assessment scores with real-time range validation, unsaved change alerts, and audit logging.
+
+---
+
+## 6. Student Functionality
+
+- **Academic Schedule**: View daily and weekly class timetable slots and assigned classrooms.
+- **Attendance Monitoring**: Check course-wise attendance percentages, attended/conducted counts, and required recovery lectures to meet threshold.
+- **Evaluation Grades**: Review assessment scores and letter grades.
+- **Grievance Redressal**: Submit complaints, upload category details, and track resolution status in real-time.
+
+---
+
+## 7. Technology Stack
 
 | Layer | Technologies |
 |---|---|
-| **Frontend** | React 19, TanStack Router, TanStack Start, Tailwind CSS v4, Radix UI, Lucide Icons, Recharts |
+| **Frontend** | React 19, TanStack Router, TanStack Start, Tailwind CSS v4, Radix UI, Lucide React, Recharts |
 | **Backend** | Java 17/21, Spring Boot 3.2.5, Spring Web, Spring Data JPA / JDBC, Hibernate Validator |
 | **Database** | MySQL Server 8.0+ (InnoDB Engine), Stored Procedures, Functions, Views, Row-Level Triggers |
-| **Containerization** | Docker, Docker Compose (Optional) |
+| **Containerization** | Docker, Docker Compose (`compose.yaml` / `docker-compose.yml`) |
 | **Testing** | Vitest, React Testing Library, JUnit 5, Spring Boot Test |
 
 ---
 
-## Project Folder Structure
+## 8. System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          CAMPUS HARMONY ARCHITECTURE                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                CLIENT TIER                                  │
+│   React 19 SPA / TanStack Router + Tailwind CSS v4 + Radix UI Primitives    │
+│   Role-based portals: Administrator, Teacher, and Student                   │
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│                                      │ HTTP REST API (Port 8080)            │
+│                                      │ JSON payloads + Session Cookies      │
+│                                      ▼                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                              APPLICATION TIER                               │
+│   Spring Boot 3.2.5 (Java 17/21) REST Backend                               │
+│   • CorsConfig & Role-based Access Interceptor (RBAC)                       │
+│   • Security Session Context & Secure Password Hashing                      │
+│   • Controllers: Academic, Attendance, Marks, Timetable, Analytics, Grievance│
+│   • Spring Data JPA + Direct JDBC Transaction Support                       │
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│                                      │ JDBC / TCP Connection (Port 3306)    │
+│                                      │ MySQL Connector/J                    │
+│                                      ▼                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                DATABASE TIER                                │
+│   MySQL Server 8.0+ (InnoDB Engine)                                         │
+│   • 36 Normalized Relational Tables & Views (3NF / BCNF)                    │
+│   • 17 Row-Level Integrity Triggers & Defaulter Loggers                     │
+│   • 11 Stored Procedures & Shortfall Calculation Functions                 │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 9. Complete Folder Structure
 
 ```
 CampusHarmony/
 ├── backend/                       # Java Spring Boot REST API
 │   ├── src/
 │   │   ├── main/
-│   │   │   ├── java/com/campusharmony/   # Controllers, Services, Security, Entities
+│   │   │   ├── java/com/campusharmony/   # Controllers, Security, Services, Entities
 │   │   │   └── resources/                # application.properties
 │   │   └── test/                         # JUnit 5 integration & access tests
-│   ├── Dockerfile                 # Backend container definition
-│   └── pom.xml                    # Maven dependency & build definition
+│   ├── Dockerfile                 # Multi-stage Java 17 container build
+│   └── pom.xml                    # Maven build & dependencies definition
 ├── database/                      # Relational schema, routines, and migrations
 │   ├── migrations/                # Migration scripts 006 through 010
 │   │   ├── 006_academic_foundation.sql
@@ -92,67 +157,98 @@ CampusHarmony/
 │   │   └── 010_student_complaints.sql
 │   ├── init_complete.sql          # Unified full database bootstrap script
 │   ├── schema_v5.sql              # Base relational schema
-│   └── procedures_triggers.sql    # Core stored routines, views, and triggers
+│   ├── procedures_triggers.sql    # Core stored routines, views, and triggers
+│   └── queries.sql                # Analytical and demonstration queries
+├── docs/                          # Technical architecture and design references
+│   ├── ACADEMIC_FOUNDATION.md
+│   ├── ARCHITECTURE.md
+│   ├── DATABASE_DESIGN.md
+│   ├── DBMS_USE_CASES.md
+│   └── ERD.md
 ├── frontend/                      # React 19 + TanStack single-page / SSR application
-│   ├── src/                       # Components, routes, layouts, API clients
-│   ├── public/                    # Static assets
-│   ├── Dockerfile                 # Frontend container definition
+│   ├── src/                       # Components, routes, role layouts, state, and API client
+│   ├── public/                    # Static assets and entrypoints
+│   ├── Dockerfile                 # Node 20 SSR / client container
 │   ├── package.json               # Node.js dependencies & scripts
-│   ├── vite.config.js             # Vite + TanStack Start configuration
-│   └── vitest.config.js           # Frontend testing configuration
+│   ├── package-lock.json          # Locked dependency tree
+│   ├── vite.config.js             # TanStack Start / Vite configuration
+│   └── vitest.config.js           # Frontend unit/component test configuration
 ├── scripts/                       # Automation and helper scripts
-│   └── init-db.ps1                # PowerShell idempotent database initializer
-├── .dockerignore                  # Docker ignore rules
+│   └── init-db.ps1                # Idempotent PowerShell DB initializer
+├── .dockerignore                  # Docker build ignore rules
 ├── .env.example                   # Environment configuration template
 ├── .gitignore                     # Git ignore rules
-├── docker-compose.yml             # Multi-container orchestration (MySQL + Backend + Frontend)
-├── README.md                      # Project documentation
-├── RUN_CAMPUSHARMONY.bat          # One-click startup script (Docker or Native)
-└── STOP_CAMPUSHARMONY.bat         # Safe shutdown utility
+├── compose.yaml                   # Docker Compose specification (standard Compose V2)
+├── docker-compose.yml             # Docker Compose specification (compatible alias)
+├── README.md                      # Complete project documentation
+├── RUN_CAMPUSHARMONY.bat          # One-click startup script (Docker or Native Windows)
+└── STOP_CAMPUSHARMONY.bat         # Safe service shutdown utility
 ```
 
 ---
 
-## Prerequisites & Required Software
+## 10. Software Prerequisites
 
 ### Option A: Docker Compose (Recommended)
-- **Docker Desktop** (version 20.10+ or higher)
-- Ensure Docker Desktop is started and the Docker daemon is active.
+- **Docker Desktop** (version 20.10+ or higher).
+- Ensure Docker Desktop is running.
 
-### Option B: Native Windows Setup
-If running natively without Docker:
-- **Java Development Kit (JDK)**: JDK 17 or JDK 21 (Eclipse Temurin or Oracle JDK)
-- **Apache Maven**: Version 3.8 or higher (added to system `PATH`)
-- **Node.js & npm**: Node.js 18 LTS or 20 LTS (npm 9+)
-- **MySQL Server**: MySQL Server 8.0 or higher running on `localhost:3306`
-
----
-
-## First-Time Installation & Setup
-
-1. **Extract the ZIP file** to your desired directory (avoid paths containing special characters).
-2. **Copy the environment template**:
-   ```cmd
-   copy .env.example .env
-   ```
-3. **Install Frontend Dependencies** (required only for Native mode):
-   ```cmd
-   cd frontend
-   npm install
-   cd ..
-   ```
-4. **Compile Backend** (optional check for Native mode):
-   ```cmd
-   cd backend
-   mvn clean compile -DskipTests
-   cd ..
-   ```
+### Option B: Native Windows Mode
+- **Java Development Kit (JDK)**: JDK 17 or JDK 21 (Eclipse Temurin or Oracle JDK).
+- **Apache Maven**: Version 3.8+ (accessible in system `PATH`).
+- **Node.js & npm**: Node.js 18 LTS or 20 LTS (npm 9+).
+- **MySQL Server**: MySQL Server 8.0+ running on `localhost:3306`.
 
 ---
 
-## Environment Variables Configuration
+## 11. First-Time Installation
 
-Copy `.env.example` to `.env` in the project root:
+Clone the official repository:
+
+```cmd
+git clone https://github.com/Akshatsingla4308/CampusHarmony.git
+cd CampusHarmony
+```
+
+Copy the environment template:
+
+```cmd
+copy .env.example .env
+```
+
+If running in Native mode without Docker, install frontend dependencies:
+
+```cmd
+cd frontend
+npm install
+cd ..
+```
+
+---
+
+## 12. Database Initialization
+
+The repository includes a complete, self-contained database bootstrap file:
+`database/init_complete.sql`
+
+This file executes:
+1. `schema_v5.sql` — Base tables, foreign keys, and indexes.
+2. `procedures_triggers.sql` — Stored procedures, triggers, and functions.
+3. `migrations/006_academic_foundation.sql` — Academic sections, offerings, accounts.
+4. `migrations/007_evaluations_management.sql` — Continuous assessment marks & audit.
+5. `migrations/008_timetable_scheduling.sql` — Timetable entries & slot views.
+6. `migrations/009_attendance_analytics.sql` — Attendance aggregation & shortfall procedures.
+7. `migrations/010_student_complaints.sql` — Student complaints & activity logging.
+
+### Automatic Initialization:
+- In **Docker Compose**: Executed automatically on container boot via `/docker-entrypoint-initdb.d/`.
+- In **Native Mode**: `RUN_CAMPUSHARMONY.bat` automatically checks table existence and applies `init_complete.sql` if the database is uninitialized. Subsequent launches preserve all existing data.
+
+---
+
+## 13. How to Configure Environment Variables
+
+Create `.env` from `.env.example` in the project root:
 
 ```ini
 # --- MySQL Database Configuration ---
@@ -161,8 +257,8 @@ CAMPUS_DB_PASSWORD=RootPass2026!
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/campus_harmony?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
 
 # --- First-Run Administrator Provisioning ---
-# On the very first boot against a fresh database, Spring Boot automatically
-# creates an administrator account with these credentials.
+# On the first boot against a fresh database, Spring Boot automatically
+# provisions an administrator account with these credentials.
 CAMPUS_ADMIN_LOGIN=admin
 CAMPUS_ADMIN_PASSWORD=AdminSecurePass2026!
 
@@ -172,151 +268,113 @@ VITE_API_URL=http://localhost:8080/api
 
 ---
 
-## One-Click Startup (RUN_CAMPUSHARMONY.bat)
+## 14. How to Launch the Entire Application
 
-Simply **double-click** `RUN_CAMPUSHARMONY.bat` from Windows Explorer or run from Command Prompt:
+CampusHarmony provides an automated one-click launcher for Windows:
 
 ```cmd
 RUN_CAMPUSHARMONY.bat
 ```
 
-### What the script does automatically:
-1. **Loads configuration**: Reads credentials and settings from `.env` (or applies safe defaults).
-2. **Detects runtime mode**:
-   - If Docker is running, launches the entire stack with `docker compose up -d`.
-   - If Docker is not running, executes native mode.
-3. **Checks prerequisites**: Verifies Java, Maven, Node.js, and MySQL.
-4. **Initializes database on first run**: Executes `database/init_complete.sql` only if tables are not yet present. Preserves existing data on subsequent runs.
-5. **Starts Spring Boot Backend**: Dispatches the backend on port 8080 and waits until the REST API responds.
-6. **Starts React Frontend**: Launches the Vite server on port 5173.
-7. **Launches Browser**: Automatically opens `http://localhost:5173` in your default web browser.
+Simply **double-click** `RUN_CAMPUSHARMONY.bat` from Windows Explorer.
+
+### What happens automatically:
+1. Validates environment configuration from `.env`.
+2. Detects runtime environment (prefers Docker Desktop if active, falls back to native services).
+3. Verifies prerequisite binaries and checks database availability.
+4. Initializes database schema and migrations on first run (preserves data on subsequent runs).
+5. Boots Spring Boot backend on port 8080 and waits for API responsiveness.
+6. Starts React frontend on port 5173.
+7. Automatically launches `http://localhost:5173` in your default web browser.
 
 ---
 
-## Safe Service Shutdown (STOP_CAMPUSHARMONY.bat)
+## 15. How to Stop the Application
 
-To cleanly stop the application, **double-click** `STOP_CAMPUSHARMONY.bat`:
+To safely shut down all CampusHarmony services:
 
 ```cmd
 STOP_CAMPUSHARMONY.bat
 ```
 
-### Safety Guarantees:
-- Stops running Docker containers with `docker compose stop` (does **not** delete volumes).
-- Terminates background processes on ports 8080 and 5173.
-- Leaves MySQL Server running and preserves all academic and database records.
+Double-clicking `STOP_CAMPUSHARMONY.bat`:
+- Gracefully stops Docker containers with `docker compose stop` without deleting named volume `campusharmony_mysql_data`.
+- Terminates background processes on port 8080 and 5173.
+- Leaves MySQL Server and all academic database records completely intact.
 
 ---
 
-## Accessing the Application
+## 16. How to Access the Website
 
-- **Web Application**: [http://localhost:5173](http://localhost:5173)
-- **Spring Boot REST API**: [http://localhost:8080/api](http://localhost:8080/api)
-- **API Health Check**: [http://localhost:8080/api/auth/me](http://localhost:8080/api/auth/me)
-
----
-
-## Initial Administrator Provisioning
-
-When Spring Boot boots for the first time against an empty database, its built-in authentication bootstrap detects that no administrator account exists in the `accounts` table. It securely hashes `CAMPUS_ADMIN_PASSWORD` and inserts the administrator record with `CAMPUS_ADMIN_LOGIN`.
-
-- **Default Username**: `admin` (or the value set in `.env`)
-- **Default Password**: Set in `.env` (`CAMPUS_ADMIN_PASSWORD`)
-
-> **Note**: Subsequent launches read the existing account from MySQL and do not overwrite your credentials or reset the database.
+| Endpoint | URL | Description |
+|---|---|---|
+| **Web Portal** | [http://localhost:5173](http://localhost:5173) | Primary modern React academic interface |
+| **Backend REST API** | [http://localhost:8080/api](http://localhost:8080/api) | Spring Boot REST endpoints |
+| **API Session Check** | [http://localhost:8080/api/auth/me](http://localhost:8080/api/auth/me) | Authentication identity status endpoint |
 
 ---
 
-## Running Tests
+## 17. How to Securely Create the First Administrator
 
-### 1. Frontend Test Suite (Vitest)
-Executes 37 component, router, and UI unit tests:
+CampusHarmony features an automated, secure first-run administrator provisioning bootstrap in `AuthController`:
+1. When Spring Boot boots against a newly initialized database, it checks `SELECT COUNT(*) FROM accounts WHERE role='admin'`.
+2. If zero administrator accounts exist, it reads `CAMPUS_ADMIN_LOGIN` and `CAMPUS_ADMIN_PASSWORD` from `.env`.
+3. It securely hashes the password with BCrypt/PBKDF2 and creates the initial administrator account.
+4. On subsequent boots, the existing administrator account is detected, and credentials are preserved without re-hashing or overwriting.
+
+---
+
+## 18. How to Run Frontend Tests
+
+The frontend test suite runs 37 automated tests across 12 test files covering components, router flows, and role logic:
+
 ```cmd
 cd frontend
 npm test
 ```
 
-### 2. Backend Unit & Access Tests (Maven)
-Executes Spring Boot security and controller access tests:
+---
+
+## 19. How to Run Backend Tests
+
+### Controller & Security Access Tests:
 ```cmd
 cd backend
-mvn test -Dtest=BackendAccessIT
+mvn test -Dtest=*AccessTests
 ```
 
-### 3. Full Integration Suite (with Disposable MySQL)
+### Full Integration Test Suite (with Disposable MySQL):
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\backend\verify-foundation.ps1 -SqlOnly
 ```
 
 ---
 
-## Database Architecture & Persistence
+## 20. Troubleshooting Common Errors
 
-CampusHarmony uses an enterprise relational schema normalized to 3NF/BCNF with strict foreign keys, unique composite indexes, and business-logic triggers.
-
-### Relational Schema Summary:
-- **Core Entities**: `departments`, `academic_periods`, `sections`, `section_members`, `subjects`, `courses`, `course_offerings`, `teachers`, `students`, `accounts`.
-- **Attendance**: `attendance_sessions`, `attendance_records`, `attendance_corrections_audit`.
-- **Evaluations**: `assessments`, `assessment_marks`, `assessment_marks_audit`.
-- **Timetable**: `timetable_entries` with slot conflict constraints.
-- **Analytics & Complaints**: `complaints`, `complaint_activity`, `defaulter_audit_log`.
-
-### Persistence Guarantee:
-- **Docker**: The named volume `campusharmony_mysql_data` persists data across container stops and restarts.
-- **Native**: Data resides directly in the host MySQL data directory and is never dropped during normal application restarts.
-
----
-
-## Troubleshooting Guide
-
-### 1. Port 8080 or Port 5173 is already in use
-Run `STOP_CAMPUSHARMONY.bat` to clear lingering processes from previous sessions. Alternatively, terminate manually:
+### 1. Port 8080 or Port 5173 already occupied
+Run `STOP_CAMPUSHARMONY.bat` to clear lingering processes. To manually kill by PID:
 ```cmd
 for /f "tokens=5" %a in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') do taskkill /F /PID %a
 for /f "tokens=5" %a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do taskkill /F /PID %a
 ```
 
 ### 2. MySQL Connection Refused (Native Mode)
-Ensure MySQL 8.0 service is running:
+Ensure MySQL Server 8.0 service is active:
 ```cmd
 net start MySQL80
 ```
 Verify that `CAMPUS_DB_PASSWORD` in `.env` matches your local MySQL `root` password.
 
 ### 3. "Access Denied for user 'root'@'localhost'"
-Update `.env` with the correct password:
+Update `.env` with your actual MySQL credentials:
 ```ini
-CAMPUS_DB_PASSWORD=your_actual_mysql_password
+CAMPUS_DB_USER=root
+CAMPUS_DB_PASSWORD=your_actual_password
 ```
 
 ### 4. Docker Desktop Engine Not Running
-If you see `failed to connect to docker API`, start the **Docker Desktop** application from your Windows Start menu, wait for the green "Engine running" indicator, and run `RUN_CAMPUSHARMONY.bat` again.
-
----
-
-## Cloning & Uploading to GitHub
-
-To upload this clean package to your own GitHub repository:
-
-```cmd
-# 1. Initialize a new git repository in the extracted folder
-git init
-
-# 2. Stage all source files (cleanly filtered by .gitignore)
-git add .
-
-# 3. Create initial commit
-git commit -m "feat: initial commit of CampusHarmony academic management platform"
-
-# 4. Set default branch to main
-git branch -M main
-
-# 5. Link to your own newly created GitHub repository
-git remote add origin https://github.com/<your-username>/<your-repo-name>.git
-
-# 6. Push code to GitHub
-git push -u origin main
-```
+If you receive `failed to connect to docker API`, start Docker Desktop from the Windows Start menu, ensure the daemon is running, and re-run `RUN_CAMPUSHARMONY.bat`.
 
 ---
 
