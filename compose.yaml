@@ -14,7 +14,7 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: campus_harmony
-      MYSQL_ROOT_PASSWORD: ${CAMPUS_DB_PASSWORD:?Error: CAMPUS_DB_PASSWORD must be configured in .env}
+      MYSQL_ROOT_PASSWORD: "${CAMPUS_DB_PASSWORD:?CAMPUS_DB_PASSWORD must be configured in .env}"
     ports:
       - "3306:3306"
     volumes:
@@ -39,9 +39,9 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/campus_harmony?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       CAMPUS_DB_USER: ${CAMPUS_DB_USER:-root}
-      CAMPUS_DB_PASSWORD: ${CAMPUS_DB_PASSWORD:?Error: CAMPUS_DB_PASSWORD must be configured in .env}
+      CAMPUS_DB_PASSWORD: "${CAMPUS_DB_PASSWORD:?CAMPUS_DB_PASSWORD must be configured in .env}"
       CAMPUS_ADMIN_LOGIN: ${CAMPUS_ADMIN_LOGIN:-admin}
-      CAMPUS_ADMIN_PASSWORD: ${CAMPUS_ADMIN_PASSWORD:?Error: CAMPUS_ADMIN_PASSWORD must be configured in .env}
+      CAMPUS_ADMIN_PASSWORD: "${CAMPUS_ADMIN_PASSWORD:?CAMPUS_ADMIN_PASSWORD must be configured in .env}"
     ports:
       - "8080:8080"
     healthcheck:
