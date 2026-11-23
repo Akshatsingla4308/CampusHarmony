@@ -76,6 +76,12 @@ export function TimetablePage() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelReason, setCancelReason] = useState("");
 
+  // Mobile day selection (phones)
+  const [mobileDay, setMobileDay] = useState(() => {
+    const dayIdx = new Date().getDay();
+    return DAYS[dayIdx === 0 ? 0 : dayIdx - 1] || "Monday";
+  });
+
   // Initial Load
   useEffect(() => {
     loadData();
@@ -413,6 +419,25 @@ export function TimetablePage() {
                           </button>
                         </div>
                       )}
+                      {role === "teacher" && isCompleted && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigate({
+                              to: "/attendance",
+                              search: {
+                                offeringId: lec.offering_id,
+                                date: todaySchedule.date || new Date().toISOString().split("T")[0],
+                                sessionId: lec.id || lec.entry_id,
+                              },
+                            });
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border border-border bg-card hover:bg-muted text-foreground transition-colors"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          View Roster
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -510,7 +535,52 @@ export function TimetablePage() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile Day Selector (Phones & Small Screens) */}
+        <div className="p-3 border-b border-border bg-muted/10 sm:hidden">
+          <div className="flex items-center justify-between gap-1">
+            {DAYS.map((d) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setMobileDay(d)}
+                className={`flex-1 py-1 text-xs font-semibold rounded-md transition-colors ${
+                  mobileDay === d
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {d.slice(0, 3)}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-3 space-y-2">
+            {PERIOD_DEFAULTS.map((p) => {
+              const slot = timetableGrid[mobileDay]?.[p.period];
+              if (!slot) return null;
+              return (
+                <div key={p.period} className="p-2.5 rounded-lg border border-primary/20 bg-primary/5 space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-primary">{slot.course_code}: {slot.course_name}</span>
+                    <span className="font-mono text-[10px] text-muted-foreground">P{p.period} ({p.start}-{p.end})</span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+                    <span>{slot.teacher_name || slot.section_name}</span>
+                    {slot.room && <span className="font-medium text-foreground">{slot.room}</span>}
+                  </div>
+                </div>
+              );
+            })}
+            {!PERIOD_DEFAULTS.some((p) => timetableGrid[mobileDay]?.[p.period]) && (
+              <p className="text-center py-4 text-xs text-muted-foreground">
+                No lectures scheduled on {mobileDay}.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Master Weekly Table (Desktop & Tablet) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full border-collapse text-left text-xs">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
@@ -631,11 +701,15 @@ export function TimetablePage() {
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
                 >
                   <option value="">-- Select Course Offering --</option>
-                  {sectionOfferings.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.code}: {o.course_name} (Sec: {o.section_name} • Faculty: {o.teacher_id})
-                    </option>
-                  ))}
+                  {sectionOfferings.map((o) => {
+                    const teacherObj = catalog.teachers?.find((t) => t.teacher_id === o.teacher_id);
+                    const teacherName = teacherObj ? teacherObj.name : o.teacher_id;
+                    return (
+                      <option key={o.id} value={o.id}>
+                        {o.code}: {o.course_name} (Sec: {o.section_name} • Faculty: {teacherName})
+                      </option>
+                    );
+                  })}
                 </select>
                 {sectionOfferings.length === 0 && (
                   <p className="text-[11px] text-amber-500 mt-1">

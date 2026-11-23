@@ -428,14 +428,32 @@ function MarkRoster({ lecture, revision, refresh, future, refreshingLecture }) {
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
-    [editing, setEditing] = useState(false);
+    [editing, setEditing] = useState(false),
+    [filterQuery, setFilterQuery] = useState(""),
+    [auditReason, setAuditReason] = useState("Attendance record correction");
+
   const submitted = Boolean(lecture.submitted_at);
   const editable = !future && (!submitted || editing);
   const pending = refreshingLecture || roster.revision !== revision;
   const statusFor = (r) => marks[r.enrollment_id] ?? r.status ?? "";
+
+  // Summary counts
+  const totalEnrolled = roster.data?.length ?? 0;
+  const presentCount = roster.data ? roster.data.filter((r) => statusFor(r) === "Present").length : 0;
+  const absentCount = roster.data ? roster.data.filter((r) => statusFor(r) === "Absent").length : 0;
+  const unmarkedCount = roster.data ? roster.data.filter((r) => !statusFor(r)).length : 0;
+
+  // Has unmarked for initial submission
+  const canSubmitInitial = !submitted && unmarkedCount === 0;
+  const hasChanges = submitted && roster.data?.some((r) => statusFor(r) !== r.status);
+
   async function submit(e) {
     e.preventDefault();
     if (pending || busy || !editable) return;
+    if (!submitted && unmarkedCount > 0) {
+      setError("Please mark attendance for all enrolled students before submitting.");
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -458,6 +476,16 @@ function MarkRoster({ lecture, revision, refresh, future, refreshingLecture }) {
       setBusy(false);
     }
   }
+
+  function markAll(status) {
+    if (!editable || !roster.data) return;
+    const next = {};
+    roster.data.forEach((r) => {
+      next[r.enrollment_id] = status;
+    });
+    setMarks(next);
+  }
+
   if (roster.error && roster.revision === revision)
     return (
       <p role="alert">
@@ -470,67 +498,234 @@ function MarkRoster({ lecture, revision, refresh, future, refreshingLecture }) {
   if (pending)
     return <p role="status">{message ? message + " Refreshing roster…" : "Loading roster…"}</p>;
   if (!roster.data.length) return <p>No students were enrolled for this lecture date.</p>;
+
+  const displayedStudents = filterQuery
+    ? roster.data.filter(
+        (r) =>
+          (r.name && r.name.toLowerCase().includes(filterQuery.toLowerCase())) ||
+          (r.roll && r.roll.toLowerCase().includes(filterQuery.toLowerCase())),
+      )
+    : roster.data;
+
   return (
     <form onSubmit={submit} className={panel + " grid gap-3"}>
-      <h3 className="font-semibold">
-        {editing ? "Correct attendance" : submitted ? "Submitted attendance" : "Lecture roster"}
-      </h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
+        <div>
+          <h3 className="font-semibold text-foreground">
+            {editing ? "Correct attendance" : submitted ? "Submitted attendance" : "Lecture roster"}
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Period {lecture.session_slot} · {totalEnrolled} student{totalEnrolled === 1 ? "" : "s"} enrolled
+          </p>
+        </div>
+
+        {/* Live Attendance Counts Banner */}
+        <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
+          <span className="px-2 py-0.5 rounded-md bg-muted text-foreground border border-border">
+            Total: {totalEnrolled}
+          </span>
+          <span className="px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            Present: {presentCount}
+          </span>
+          <span className="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+            Absent: {absentCount}
+          </span>
+          {unmarkedCount > 0 && (
+            <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+              Unmarked: {unmarkedCount}
+            </span>
+          )}
+        </div>
+      </div>
+
       {future && (
         <p className="text-sm text-muted-foreground">
           Attendance can be marked on or after the lecture date.
         </p>
       )}
-      {roster.data.map((r) => (
-        <label
-          className="flex flex-wrap items-center justify-between gap-2 border-b border-border py-2 text-sm"
-          key={r.enrollment_id}
-        >
-          <span>
-            {r.roll} · {r.name}
-          </span>
-          {!editable ? (
-            <span>{r.status ?? "No record"}</span>
-          ) : (
-            <select
-              required
-              className={control + " sm:w-40"}
-              value={statusFor(r)}
-              disabled={busy}
-              onChange={(e) => setMarks({ ...marks, [r.enrollment_id]: e.target.value })}
-            >
-              <option value="">Choose…</option>
-              <option>Present</option>
-              <option>Absent</option>
-            </select>
-          )}
-        </label>
-      ))}
+
+      {/* Roster Controls: Bulk Actions & Search Filter */}
       {editable && (
-        <button
-          disabled={busy || (submitted && !roster.data.some((r) => statusFor(r) !== r.status))}
-          className={button + " w-fit"}
-        >
-          {busy ? "Saving…" : submitted ? "Save corrections" : "Submit attendance"}
-        </button>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 pb-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Quick actions:</span>
+            <button
+              type="button"
+              onClick={() => markAll("Present")}
+              disabled={busy}
+              className="px-2.5 py-1 text-xs font-semibold rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+            >
+              Mark All Present
+            </button>
+            <button
+              type="button"
+              onClick={() => markAll("Absent")}
+              disabled={busy}
+              className="px-2.5 py-1 text-xs font-semibold rounded-md border border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition-colors"
+            >
+              Mark All Absent
+            </button>
+            {Object.keys(marks).length > 0 && (
+              <button
+                type="button"
+                onClick={() => setMarks({})}
+                disabled={busy}
+                className="px-2 py-1 text-xs font-medium rounded-md border border-border bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {roster.data.length > 3 && (
+            <div className="relative sm:w-64">
+              <input
+                type="text"
+                placeholder="Search by name or roll…"
+                value={filterQuery}
+                onChange={(e) => setFilterQuery(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground"
+              />
+            </div>
+          )}
+        </div>
       )}
-      {submitted && !future && (
-        <button
-          type="button"
-          disabled={busy}
-          className="w-fit text-sm font-medium underline"
-          onClick={() => {
-            setEditing(!editing);
-            setMarks({});
-            setError("");
-            setMessage("");
-          }}
-        >
-          {editing ? "Cancel corrections" : "Correct attendance"}
-        </button>
+
+      {/* Student List */}
+      <div className="divide-y divide-border rounded-lg border border-border overflow-hidden">
+        {displayedStudents.length === 0 ? (
+          <p className="p-4 text-center text-xs text-muted-foreground">
+            No students match "{filterQuery}".
+          </p>
+        ) : (
+          displayedStudents.map((r) => {
+            const currentStatus = statusFor(r);
+            return (
+              <div
+                key={r.enrollment_id}
+                className={`flex flex-wrap items-center justify-between gap-2 p-2.5 text-sm transition-colors ${
+                  currentStatus === "Present"
+                    ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                    : currentStatus === "Absent"
+                    ? "bg-rose-500/5 hover:bg-rose-500/10"
+                    : "hover:bg-muted/30"
+                }`}
+              >
+                <label className="flex flex-1 items-center justify-between gap-2 cursor-pointer">
+                  <span className="font-medium text-foreground">
+                    <span className="font-mono text-xs font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded mr-1.5">
+                      {r.roll}
+                    </span>
+                    · {r.name}
+                  </span>
+                  {!editable ? (
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                        r.status === "Present"
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                          : r.status === "Absent"
+                          ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30"
+                          : "bg-muted text-muted-foreground border-border"
+                      }`}
+                    >
+                      {r.status ?? "No record"}
+                    </span>
+                  ) : (
+                    <select
+                      required
+                      className={control + " sm:w-36 text-xs"}
+                      value={currentStatus}
+                      disabled={busy}
+                      onChange={(e) => setMarks({ ...marks, [r.enrollment_id]: e.target.value })}
+                    >
+                      <option value="">Choose…</option>
+                      <option>Present</option>
+                      <option>Absent</option>
+                    </select>
+                  )}
+                </label>
+
+                {editable && (
+                  <div className="hidden sm:inline-flex rounded-md border border-border p-0.5 bg-muted/40 shrink-0">
+                    <button
+                      type="button"
+                      title={`Mark ${r.name} Present`}
+                      onClick={() => setMarks({ ...marks, [r.enrollment_id]: "Present" })}
+                      className={`px-2 py-0.5 text-xs font-semibold rounded transition-colors ${
+                        currentStatus === "Present"
+                          ? "bg-emerald-600 text-white shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      P
+                    </button>
+                    <button
+                      type="button"
+                      title={`Mark ${r.name} Absent`}
+                      onClick={() => setMarks({ ...marks, [r.enrollment_id]: "Absent" })}
+                      className={`px-2 py-0.5 text-xs font-semibold rounded transition-colors ${
+                        currentStatus === "Absent"
+                          ? "bg-rose-600 text-white shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      A
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Editing Audit Reason Input */}
+      {editing && (
+        <label className="grid gap-1 text-xs font-medium text-foreground pt-1">
+          Reason for correction:
+          <input
+            type="text"
+            className={control + " text-xs"}
+            value={auditReason}
+            onChange={(e) => setAuditReason(e.target.value)}
+            placeholder="e.g. Verified medical leave / Administrative roster update"
+          />
+        </label>
       )}
-      {message && <p role="status">{message}</p>}
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap items-center gap-3 pt-2">
+        {editable && (
+          <button
+            disabled={busy || (submitted && !hasChanges)}
+            className={button + " w-fit"}
+          >
+            {busy ? "Saving…" : submitted ? "Save corrections" : "Submit attendance"}
+          </button>
+        )}
+        {submitted && !future && (
+          <button
+            type="button"
+            disabled={busy}
+            className="w-fit text-sm font-medium underline text-muted-foreground hover:text-foreground"
+            onClick={() => {
+              if (editing && Object.keys(marks).length > 0) {
+                if (!window.confirm("Discard unsaved attendance corrections?")) return;
+              }
+              setEditing(!editing);
+              setMarks({});
+              setError("");
+              setMessage("");
+            }}
+          >
+            {editing ? "Cancel corrections" : "Correct attendance"}
+          </button>
+        )}
+      </div>
+
+      {message && <p role="status" className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{message}</p>}
       {error && (
-        <p role="alert" className="text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
       )}

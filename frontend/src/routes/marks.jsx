@@ -81,6 +81,7 @@ function TeacherMarksWorkspace() {
   const [assessmentDetails, setAssessmentDetails] = useState(null);
   const [loadedAssessmentId, setLoadedAssessmentId] = useState("");
   const [marksState, setMarksState] = useState({}); // { [enrollmentId]: { marks: string, remarks: string } }
+  const [studentQuery, setStudentQuery] = useState("");
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingRoster, setLoadingRoster] = useState(false);
@@ -88,6 +89,16 @@ function TeacherMarksWorkspace() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [auditReason, setAuditReason] = useState("Evaluation submission");
+
+  // Track unsaved changes in memory
+  const hasUnsavedChanges = roster.some((st) => {
+    const current = marksState[st.enrollment_id];
+    if (!current) return false;
+    const origMarks =
+      st.marks_obtained !== null && st.marks_obtained !== undefined ? String(st.marks_obtained) : "";
+    const origRemarks = st.remarks || "";
+    return current.marks !== origMarks || current.remarks !== origRemarks;
+  });
 
   // Create Assessment Modal
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -205,6 +216,7 @@ function TeacherMarksWorkspace() {
 
   function selectOffering(offeringId) {
     if (offeringId === selectedOffering) return;
+    if (hasUnsavedChanges && !window.confirm("You have unsaved mark entries. Discard changes?")) return;
     setError(null);
     setSuccessMsg(null);
     setAssessments([]);
@@ -212,6 +224,12 @@ function TeacherMarksWorkspace() {
     setLoadedAssessmentId("");
     setLoadingRoster(false);
     setSelectedOffering(offeringId);
+  }
+
+  function selectAssessment(id) {
+    if (id === selectedAssessmentId) return;
+    if (hasUnsavedChanges && !window.confirm("You have unsaved mark entries. Discard changes?")) return;
+    setSelectedAssessmentId(id);
   }
 
   // Handle Mark Input Change
@@ -466,7 +484,7 @@ function TeacherMarksWorkspace() {
                         type="button"
                         disabled={saving || creating}
                         aria-pressed={isSelected}
-                        onClick={() => setSelectedAssessmentId(String(ass.id))}
+                        onClick={() => selectAssessment(String(ass.id))}
                         className={`w-full text-left p-3 rounded-xl border transition-all ${
                           isSelected
                             ? "border-primary bg-primary/10 shadow-2xs"
@@ -560,164 +578,227 @@ function TeacherMarksWorkspace() {
                 </p>
               </div>
             ) : (
-              selectedAssessmentId === loadedAssessmentId && <form onSubmit={handleSaveMarks} className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
-                {/* Roster Header */}
-                <div className="p-4 bg-muted/30 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-foreground text-sm">
-                        {assessmentDetails?.title} — Grading Roster
-                      </h3>
-                      <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">
-                        Max: {assessmentDetails?.max_marks} marks
-                      </span>
+              selectedAssessmentId === loadedAssessmentId && (() => {
+                const displayedRoster = studentQuery
+                  ? roster.filter(
+                      (st) =>
+                        st.name.toLowerCase().includes(studentQuery.toLowerCase()) ||
+                        st.roll.toLowerCase().includes(studentQuery.toLowerCase()),
+                    )
+                  : roster;
+                const evaluatedCount = roster.filter((st) => marksState[st.enrollment_id]?.marks !== "").length;
+                const unscoredCount = roster.length - evaluatedCount;
+
+                return (
+                  <form onSubmit={handleSaveMarks} className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xs">
+                    {/* Roster Header */}
+                    <div className="p-4 bg-muted/30 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-foreground text-sm">
+                            {assessmentDetails?.title} — Grading Roster
+                          </h3>
+                          <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-primary/10 text-primary">
+                            Max: {assessmentDetails?.max_marks} marks
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {currentOffering?.code} · {currentOffering?.course_name} · Section {currentOffering?.section_name} ({roster.length} enrolled students)
+                        </p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted text-foreground border border-border">
+                            Enrolled: {roster.length}
+                          </span>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                            Evaluated: {evaluatedCount}
+                          </span>
+                          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted/80 text-muted-foreground border border-border">
+                            Unscored: {unscoredCount}
+                          </span>
+                          {hasUnsavedChanges && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> Unsaved changes
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {roster.length > 2 && (
+                          <div className="relative">
+                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                            <input
+                              type="text"
+                              value={studentQuery}
+                              onChange={(e) => setStudentQuery(e.target.value)}
+                              placeholder="Search roster…"
+                              className="pl-8 pr-2.5 py-1 text-xs border rounded-lg bg-background w-36 text-foreground placeholder:text-muted-foreground"
+                            />
+                          </div>
+                        )}
+                        <label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          Audit Note:
+                          <input
+                            type="text"
+                            value={auditReason}
+                            onChange={(e) => setAuditReason(e.target.value)}
+                            placeholder="Reason for save/edit"
+                            className="p-1 px-2 text-xs border rounded bg-background w-44"
+                          />
+                        </label>
+                        <button
+                          type="submit"
+                          disabled={saving || roster.length === 0}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-2xs disabled:opacity-50"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          {saving ? "Saving..." : "Save Marks"}
+                        </button>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {currentOffering?.code} · {currentOffering?.course_name} · Section {currentOffering?.section_name} ({roster.length} enrolled students)
-                    </p>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                      Audit Note:
-                      <input
-                        type="text"
-                        value={auditReason}
-                        onChange={(e) => setAuditReason(e.target.value)}
-                        placeholder="Reason for save/edit"
-                        className="p-1 px-2 text-xs border rounded bg-background w-44"
-                      />
-                    </label>
-                    <button
-                      type="submit"
-                      disabled={saving || roster.length === 0}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-2xs disabled:opacity-50"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      {saving ? "Saving..." : "Save Marks"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-muted/50 border-b border-border text-muted-foreground uppercase text-[10px] font-semibold tracking-wider">
-                      <tr>
-                        <th className="py-3 px-4 w-28">Roll No</th>
-                        <th className="py-3 px-4">Student Name</th>
-                        <th className="py-3 px-4 w-32">Obtained Marks</th>
-                        <th className="py-3 px-4 w-24 text-center">Max Marks</th>
-                        <th className="py-3 px-4 w-20 text-center">Grade</th>
-                        <th className="py-3 px-4">Remarks</th>
-                        <th className="py-3 px-4 w-24 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {roster.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                            No enrolled students found in this course offering section.
-                          </td>
-                        </tr>
-                      ) : (
-                        roster.map((st) => {
-                          const currentMarks = marksState[st.enrollment_id]?.marks ?? "";
-                          const currentRemarks = marksState[st.enrollment_id]?.remarks ?? "";
-                          const grade = calculateGrade(currentMarks, assessmentDetails?.max_marks);
-                          const isInvalid =
-                            currentMarks !== "" &&
-                            (isNaN(Number(currentMarks)) ||
-                              Number(currentMarks) < 0 ||
-                              Number(currentMarks) > Number(assessmentDetails?.max_marks));
-
-                          return (
-                            <tr
-                              key={st.enrollment_id}
-                              className={`hover:bg-muted/30 transition-colors ${
-                                isInvalid ? "bg-rose-500/5" : ""
-                              }`}
-                            >
-                              <td className="py-3 px-4 font-mono font-bold text-foreground">
-                                {st.roll}
-                              </td>
-                              <td className="py-3 px-4 font-semibold text-foreground">
-                                {st.name}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="relative">
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max={assessmentDetails?.max_marks}
-                                    step="0.5"
-                                    value={currentMarks}
-                                    onChange={(e) => handleMarkChange(st.enrollment_id, e.target.value)}
-                                    placeholder="Enter mark"
-                                    className={`w-full p-1.5 px-2 text-xs font-mono font-bold rounded-lg border bg-background transition-all ${
-                                      isInvalid
-                                        ? "border-rose-500 text-rose-600 focus:ring-rose-500"
-                                        : "border-input text-foreground focus:ring-primary"
-                                    }`}
-                                  />
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-center font-mono text-muted-foreground">
-                                {assessmentDetails?.max_marks}
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <span
-                                  className={`inline-block font-mono font-bold text-[10px] px-2 py-0.5 rounded border ${gradeColor(
-                                    grade
-                                  )}`}
-                                >
-                                  {grade}
-                                </span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <input
-                                  type="text"
-                                  value={currentRemarks}
-                                  onChange={(e) => handleRemarkChange(st.enrollment_id, e.target.value)}
-                                  placeholder="Optional remarks"
-                                  className="w-full p-1.5 px-2 text-xs rounded-lg border border-input bg-background text-muted-foreground"
-                                />
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                {st.is_saved ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Saved
-                                  </span>
-                                ) : (
-                                  <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                                    Pending
-                                  </span>
-                                )}
+                    {/* Table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-muted/50 border-b border-border text-muted-foreground uppercase text-[10px] font-semibold tracking-wider">
+                          <tr>
+                            <th className="py-3 px-4 w-28">Roll No</th>
+                            <th className="py-3 px-4">Student Name</th>
+                            <th className="py-3 px-4 w-32">Obtained Marks</th>
+                            <th className="py-3 px-4 w-24 text-center">Max Marks</th>
+                            <th className="py-3 px-4 w-20 text-center">Grade</th>
+                            <th className="py-3 px-4">Remarks</th>
+                            <th className="py-3 px-4 w-24 text-center">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {displayedRoster.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                                {studentQuery
+                                  ? `No enrolled students match "${studentQuery}".`
+                                  : "No enrolled students found in this course offering section."}
                               </td>
                             </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                          ) : (
+                            displayedRoster.map((st) => {
+                              const currentMarks = marksState[st.enrollment_id]?.marks ?? "";
+                              const currentRemarks = marksState[st.enrollment_id]?.remarks ?? "";
+                              const grade = calculateGrade(currentMarks, assessmentDetails?.max_marks);
+                              const origMarks =
+                                st.marks_obtained !== null && st.marks_obtained !== undefined ? String(st.marks_obtained) : "";
+                              const origRemarks = st.remarks || "";
+                              const isChanged = currentMarks !== origMarks || currentRemarks !== origRemarks;
+                              const isInvalid =
+                                currentMarks !== "" &&
+                                (isNaN(Number(currentMarks)) ||
+                                  Number(currentMarks) < 0 ||
+                                  Number(currentMarks) > Number(assessmentDetails?.max_marks));
 
-                {/* Footer Save Bar */}
-                <div className="p-4 bg-muted/20 border-t border-border flex items-center justify-between">
-                  <div className="text-[11px] text-muted-foreground">
-                    Tip: Enter obtained marks between 0 and {assessmentDetails?.max_marks}. Empty scores are kept unscored.
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={saving || roster.length === 0}
-                    className="inline-flex items-center gap-1.5 px-5 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-2xs disabled:opacity-50"
-                  >
-                    <Save className="w-3.5 h-3.5" />
-                    {saving ? "Saving..." : "Save Marks"}
-                  </button>
-                </div>
-              </form>
+                              return (
+                                <tr
+                                  key={st.enrollment_id}
+                                  className={`hover:bg-muted/30 transition-colors ${
+                                    isInvalid ? "bg-rose-500/5" : isChanged ? "bg-amber-500/5" : ""
+                                  }`}
+                                >
+                                  <td className="py-3 px-4 font-mono font-bold text-foreground">
+                                    {st.roll}
+                                  </td>
+                                  <td className="py-3 px-4 font-semibold text-foreground">
+                                    {st.name}
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <div className="relative">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max={assessmentDetails?.max_marks}
+                                        step="0.5"
+                                        value={currentMarks}
+                                        onChange={(e) => handleMarkChange(st.enrollment_id, e.target.value)}
+                                        placeholder="Enter mark"
+                                        className={`w-full p-1.5 px-2 text-xs font-mono font-bold rounded-lg border bg-background transition-all ${
+                                          isInvalid
+                                            ? "border-rose-500 text-rose-600 focus:ring-rose-500"
+                                            : "border-input text-foreground focus:ring-primary"
+                                        }`}
+                                      />
+                                      {isInvalid && (
+                                        <span className="text-[10px] text-rose-500 font-semibold block mt-0.5">
+                                          {Number(currentMarks) > Number(assessmentDetails?.max_marks)
+                                            ? `Max is ${assessmentDetails?.max_marks}`
+                                            : "Must be ≥ 0"}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-3 px-4 text-center font-mono text-muted-foreground">
+                                    {assessmentDetails?.max_marks}
+                                  </td>
+                                  <td className="py-3 px-4 text-center">
+                                    <span
+                                      className={`inline-block font-mono font-bold text-[10px] px-2 py-0.5 rounded border ${gradeColor(
+                                        grade
+                                      )}`}
+                                    >
+                                      {grade}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-4">
+                                    <input
+                                      type="text"
+                                      value={currentRemarks}
+                                      onChange={(e) => handleRemarkChange(st.enrollment_id, e.target.value)}
+                                      placeholder="Optional remarks"
+                                      className="w-full p-1.5 px-2 text-xs rounded-lg border border-input bg-background text-muted-foreground"
+                                    />
+                                  </td>
+                                  <td className="py-3 px-4 text-center">
+                                    {currentMarks === "" ? (
+                                      <span className="text-[10px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border">
+                                        Unscored
+                                      </span>
+                                    ) : isChanged ? (
+                                      <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                        Unsaved
+                                      </span>
+                                    ) : st.is_saved ? (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                                        <CheckCircle2 className="w-3 h-3" />
+                                        Saved
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                                        Ready
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Footer Save Bar */}
+                    <div className="p-4 bg-muted/20 border-t border-border flex items-center justify-between">
+                      <div className="text-[11px] text-muted-foreground">
+                        Tip: Enter obtained marks between 0 and {assessmentDetails?.max_marks}. Empty scores are kept unscored.
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={saving || roster.length === 0}
+                        className="inline-flex items-center gap-1.5 px-5 py-2 bg-primary text-primary-foreground text-xs font-semibold rounded-xl hover:bg-primary/90 transition-colors shadow-2xs disabled:opacity-50"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        {saving ? "Saving..." : "Save Marks"}
+                      </button>
+                    </div>
+                  </form>
+                );
+              })()
             )}
           </div>
         </div>

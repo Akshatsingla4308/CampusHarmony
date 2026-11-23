@@ -704,4 +704,62 @@ In `frontend/src/routes/defaulters.jsx` and `frontend/src/routes/marks.jsx`:
 | **Backend Integration Suites** | 5 workflow suites (`FoundationWorkflowIT`, `MarksWorkflowIT`, `TimetableWorkflowIT`, `AnalyticsWorkflowIT`, `ComplaintWorkflowIT`) | `.\backend\verify-foundation.ps1` | **5 passed, 0 failures (`BUILD SUCCESS`)** (Verified baseline) |
 | **Live Multi-Role Browser Lab** | Chrome/Webview browser automation | Interactive multi-role sessions across 4 viewports | **100% verified** |
 
+---
+
+## Phase 4C Batch 3 — Professional Academic Workflow Refinement (COMPLETED)
+
+### 1. Attendance Workflow Refinements
+In `frontend/src/components/AcademicWorkspace.jsx` (`MarkRoster` component):
+- **Live Attendance Counts Banner**: Real-time counter badges displaying `Total Enrolled`, `Present` (emerald badge), `Absent` (rose badge), and `Unmarked` (amber badge).
+- **Fast Bulk Attendance Actions**: Added one-click `"Mark All Present"` and `"Mark All Absent"` buttons, plus `"Clear"` reset action, allowing teachers to mark a full class quickly while retaining individual adjustments.
+- **Student Roster Search**: Integrated responsive search filter input (`Search by name or roll…`) allowing teachers to quickly locate students in large classes.
+- **Visual State Distinction**: Row background tinting and status badges for `Present` (emerald), `Absent` (rose), and `Unmarked` (amber). Added quick-toggle `[P]` and `[A]` pill buttons alongside the native select element.
+- **Incomplete Submission Prevention**: Initial submission requires attendance to be explicitly recorded for all enrolled students, preventing incomplete attendance records from being persisted.
+- **Audit Correction Trail**: When correcting submitted attendance, teachers can provide an audit correction reason (`"Attendance record correction"`) before saving `PUT` corrections. Cancellation prompts confirmation if unsaved changes are present.
+
+### 2. Marks & Evaluations Refinements
+In `frontend/src/routes/marks.jsx` (`TeacherMarksWorkspace` component):
+- **Student Search Filter**: Real-time roster search (`Filter roster by student or roll…`) that filters table rows while preserving in-memory score state and complete batch submission payloads.
+- **Live Evaluation Counts**: Real-time summary counters in header displaying `Enrolled`, `Evaluated`, and `Unscored` students.
+- **Unsaved Changes Detection**: In-memory dirty-tracking across `marks_obtained` and `remarks`. Displays an amber `"Unsaved changes"` pill and highlights changed rows in amber. Prompts confirmation when attempting to switch course offerings or assessments with unsaved changes.
+- **Missing vs. Zero Marks Distinction**: Distinguishes between unscored students (`""`, marked as `Unscored` pill), newly entered unsaved marks (`Unsaved`), and persisted scores (`Saved`).
+- **Validation Hints**: Real-time inline feedback if entered marks exceed `max_marks` (`Max is X`) or are negative (`Must be ≥ 0`).
+
+### 3. Timetable & Scheduling Refinements
+In `frontend/src/routes/timetable.jsx`:
+- **Fast-Track Attendance Navigation**: Added `"View Roster"` button on completed lectures in Teacher's "Today's Lectures", directly navigating to `/attendance?offeringId=...&date=...&sessionId=...` with the roster pre-selected for audit review or correction.
+- **Human-Readable Admin Selectors**: In the "Schedule Recurring Lecture Slot" modal, course offering options show the course code, course name, section, and faculty member's full name (looked up from catalog) rather than bare IDs.
+- **Mobile Responsive Daily View**: Added a mobile day-selector tab bar (`[Mon] [Tue] [Wed] [Thu] [Fri] [Sat]`) displaying card-based lecture details for mobile screens (e.g. 390px viewport), preserving the full 8-column master timetable grid on tablet/desktop.
+
+### 4. Live Multi-Role Browser Verification
+Executed via browser automation against `http://127.0.0.1:5173` and `http://127.0.0.1:8080/api`:
+- **Teacher Workflow (`TCH_DR_VERMA`)**:
+  - Opened `/attendance`, viewed live counters (Total: 1, Present: 1, Absent: 0).
+  - Toggled Aarav Sharma's attendance to `Absent` with audit reason, verified `"Attendance corrections saved."` banner, and reverted back to `Present`.
+  - Opened `/marks`, selected `CA-1 Midterm Test`, updated score from 45 to 48/50 (96%, Grade `A+`), verified `"Save 1 change"` feedback and class average update to 48/50.
+  - Opened `/timetable`, verified `"View Roster"` button routes to the attendance session.
+- **Student Workflow (`STU_AI_101`)**:
+  - Authenticated as `Aarav Sharma`, verified dashboard highlights updated score (`CA-1 Midterm Test -> 48/50`).
+  - Verified `/timetable` displays Monday Period 1 lecture in LH-101.
+  - Verified `/marks` personal report card shows 48/50 (96%, Grade `A+`) with teacher feedback.
+  - Verified `/defaulters` shows 100% attendance and `Good Academic Standing`.
+  - Verified `/complaints` shows resolved status and official resolution timeline for `GRV-2026-3E548E`.
+- **Responsive Layout Verification**:
+  - Verified $0\text{px}$ document horizontal overflow at 390px, 768px, 1366px, and 1920px.
+  - Mobile timetable day selector and attendance roster controls validated on 390px viewport.
+- **Saved Screenshot Evidence**:
+  - `browser_evidence/aef26641-1e7a-4217-a4da-31a85f34e15b/final_step_298.png`
+  - Additional captured steps: `step_263_shot_1_teacher_attendance_corrected.png`, `step_271_shot_1_teacher_marks_updated.png`, `step_273_shot_1_teacher_timetable_view.png`, `step_284_shot_1_student_dashboard_overview.png`, `step_290_shot_1_student_marks_report_batch3.png`, `step_296_shot_1_student_complaint_modal_batch3.png`.
+
+### 5. Regression Verification Matrix
+
+| Test Suite | Environment | Scope | Result |
+| --- | --- | --- | --- |
+| **Frontend Unit & Route Tests** | Node.js / jsdom | 12 test files, 35 tests | **12 passed, 35 passed (100%)** |
+| **Frontend Production Build** | Vite + Nitro | 155 client modules, 98 SSR modules | **BUILD SUCCESS (0 errors)** |
+| **Backend Role Access Tests** | Maven Surefire | 5 test classes (`FoundationAccessTests`, `MarksAccessTests`, `TimetableAccessTests`, `AnalyticsAccessTests`, `ComplaintAccessTests`) | **7 passed, 0 failures (`BUILD SUCCESS`)** |
+| **Backend Integration Baseline** | Disposable MySQL | 5 workflow suites (`FoundationWorkflowIT`, `MarksWorkflowIT`, `TimetableWorkflowIT`, `AnalyticsWorkflowIT`, `ComplaintWorkflowIT`) | **5 passed, 0 failures (`BUILD SUCCESS`)** (Verified baseline) |
+| **Live Browser Workflow** | Chromium / Webview | Teacher attendance/marks correction + Student report/timetable verification | **100% verified** |
+
+
 
