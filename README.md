@@ -96,7 +96,7 @@ CampusHarmony solves these challenges by providing a relational database foundat
 | **Frontend** | React 19, TanStack Router, TanStack Start, Tailwind CSS v4, Radix UI, Lucide React, Recharts |
 | **Backend** | Java 17/21, Spring Boot 3.2.5, Spring Web, Spring Data JPA / JDBC, Hibernate Validator |
 | **Database** | MySQL Server 8.0+ (InnoDB Engine), Stored Procedures, Functions, Views, Row-Level Triggers |
-| **Containerization** | Docker, Docker Compose (`compose.yaml` / `docker-compose.yml`) |
+| **Containerization** | Docker, Docker Compose (`compose.yaml`) |
 | **Testing** | Vitest, React Testing Library, JUnit 5, Spring Boot Test |
 
 ---
@@ -159,12 +159,6 @@ CampusHarmony/
 │   ├── schema_v5.sql              # Base relational schema
 │   ├── procedures_triggers.sql    # Core stored routines, views, and triggers
 │   └── queries.sql                # Analytical and demonstration queries
-├── docs/                          # Technical architecture and design references
-│   ├── ACADEMIC_FOUNDATION.md
-│   ├── ARCHITECTURE.md
-│   ├── DATABASE_DESIGN.md
-│   ├── DBMS_USE_CASES.md
-│   └── ERD.md
 ├── frontend/                      # React 19 + TanStack single-page / SSR application
 │   ├── src/                       # Components, routes, role layouts, state, and API client
 │   ├── public/                    # Static assets and entrypoints
@@ -174,15 +168,14 @@ CampusHarmony/
 │   ├── vite.config.js             # TanStack Start / Vite configuration
 │   └── vitest.config.js           # Frontend unit/component test configuration
 ├── scripts/                       # Automation and helper scripts
-│   └── init-db.ps1                # Idempotent PowerShell DB initializer
+│   └── init-db.ps1                # Idempotent PowerShell 5.1+ DB initializer
 ├── .dockerignore                  # Docker build ignore rules
 ├── .env.example                   # Environment configuration template
 ├── .gitignore                     # Git ignore rules
-├── compose.yaml                   # Docker Compose specification (standard Compose V2)
-├── docker-compose.yml             # Docker Compose specification (compatible alias)
+├── compose.yaml                   # Docker Compose specification (canonical V2)
 ├── README.md                      # Complete project documentation
-├── RUN_CAMPUSHARMONY.bat          # One-click startup script (Docker or Native Windows)
-└── STOP_CAMPUSHARMONY.bat         # Safe service shutdown utility
+├── RUN_CAMPUSHARMONY.bat          # Verified one-click startup script (Docker or Native)
+└── STOP_CAMPUSHARMONY.bat         # Targeted service shutdown utility (PID tracking)
 ```
 
 ---
@@ -191,13 +184,14 @@ CampusHarmony/
 
 ### Option A: Docker Compose (Recommended)
 - **Docker Desktop** (version 20.10+ or higher).
-- Ensure Docker Desktop is running.
+- Ensure Docker Desktop is started and active.
 
 ### Option B: Native Windows Mode
 - **Java Development Kit (JDK)**: JDK 17 or JDK 21 (Eclipse Temurin or Oracle JDK).
 - **Apache Maven**: Version 3.8+ (accessible in system `PATH`).
 - **Node.js & npm**: Node.js 18 LTS or 20 LTS (npm 9+).
 - **MySQL Server**: MySQL Server 8.0+ running on `localhost:3306`.
+- **PowerShell**: Windows PowerShell 5.1 (built into Windows) or PowerShell 7+.
 
 ---
 
@@ -216,13 +210,9 @@ Copy the environment template:
 copy .env.example .env
 ```
 
-If running in Native mode without Docker, install frontend dependencies:
+Open `.env` in any text editor and supply your own secure passwords for `CAMPUS_DB_PASSWORD` and `CAMPUS_ADMIN_PASSWORD`.
 
-```cmd
-cd frontend
-npm install
-cd ..
-```
+> **Note**: For native mode, `RUN_CAMPUSHARMONY.bat` will automatically install frontend dependencies (`npm install`) on first launch if `node_modules` is not found.
 
 ---
 
@@ -240,9 +230,9 @@ This file executes:
 6. `migrations/009_attendance_analytics.sql` — Attendance aggregation & shortfall procedures.
 7. `migrations/010_student_complaints.sql` — Student complaints & activity logging.
 
-### Automatic Initialization:
-- In **Docker Compose**: Executed automatically on container boot via `/docker-entrypoint-initdb.d/`.
-- In **Native Mode**: `RUN_CAMPUSHARMONY.bat` automatically checks table existence and applies `init_complete.sql` if the database is uninitialized. Subsequent launches preserve all existing data.
+### Automatic Initialization & Idempotency:
+- In **Docker Compose**: Executed automatically on first container boot via `/docker-entrypoint-initdb.d/`. Persistent volume `campusharmony_mysql_data` preserves data across restarts.
+- In **Native Mode**: `RUN_CAMPUSHARMONY.bat` calls `scripts/init-db.ps1`. It verifies table existence and applies `init_complete.sql` only if the database is uninitialized. Subsequent launches preserve all existing data.
 
 ---
 
@@ -253,18 +243,23 @@ Create `.env` from `.env.example` in the project root:
 ```ini
 # --- MySQL Database Configuration ---
 CAMPUS_DB_USER=root
-CAMPUS_DB_PASSWORD=RootPass2026!
+# REQUIRED: Set your actual local or container MySQL password
+CAMPUS_DB_PASSWORD=your_secure_mysql_password_here
+
+# JDBC DataSource URL (defaults to localhost:3306 for native mode)
 SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/campus_harmony?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
 
 # --- First-Run Administrator Provisioning ---
-# On the first boot against a fresh database, Spring Boot automatically
-# provisions an administrator account with these credentials.
 CAMPUS_ADMIN_LOGIN=admin
-CAMPUS_ADMIN_PASSWORD=AdminSecurePass2026!
+# REQUIRED: Set your initial administrator password
+CAMPUS_ADMIN_PASSWORD=your_secure_admin_password_here
 
 # --- Frontend API Connectivity ---
 VITE_API_URL=http://localhost:8080/api
 ```
+
+> [!IMPORTANT]
+> Both `CAMPUS_DB_PASSWORD` and `CAMPUS_ADMIN_PASSWORD` must be set to custom values. The launch scripts strictly reject placeholder defaults and empty passwords.
 
 ---
 
@@ -279,13 +274,17 @@ RUN_CAMPUSHARMONY.bat
 Simply **double-click** `RUN_CAMPUSHARMONY.bat` from Windows Explorer.
 
 ### What happens automatically:
-1. Validates environment configuration from `.env`.
-2. Detects runtime environment (prefers Docker Desktop if active, falls back to native services).
-3. Verifies prerequisite binaries and checks database availability.
-4. Initializes database schema and migrations on first run (preserves data on subsequent runs).
-5. Boots Spring Boot backend on port 8080 and waits for API responsiveness.
-6. Starts React frontend on port 5173.
-7. Automatically launches `http://localhost:5173` in your default web browser.
+1. Validates that `.env` exists and that passwords are not empty or left as placeholders.
+2. Checks runtime environment (prefers Docker Desktop if running; falls back to native services).
+3. If native mode is selected:
+   - Verifies Java, Maven, Node.js, npm, and MySQL prerequisites.
+   - Automatically installs frontend dependencies (`npm install`) if `node_modules` is missing.
+   - Idempotently initializes the database schema and migrations on first run.
+   - Boots Spring Boot on port 8080 and writes its PID to `.campus_run/backend.pid`.
+   - Polls `http://localhost:8080/api/auth/me` with a strict timeout; aborts cleanly if backend fails.
+   - Starts Vite on port 5173 and writes its PID to `.campus_run/frontend.pid`.
+   - Polls `http://localhost:5173` with a strict timeout; aborts cleanly if frontend fails.
+4. **Browser Launch**: Only opens `http://localhost:5173` in your default browser once all services are verified responsive.
 
 ---
 
@@ -298,8 +297,9 @@ STOP_CAMPUSHARMONY.bat
 ```
 
 Double-clicking `STOP_CAMPUSHARMONY.bat`:
-- Gracefully stops Docker containers with `docker compose stop` without deleting named volume `campusharmony_mysql_data`.
-- Terminates background processes on port 8080 and 5173.
+- Safely stops Docker containers using `docker compose -f compose.yaml stop` without deleting named volume `campusharmony_mysql_data`.
+- Terminates native backend and frontend processes using exact recorded Process IDs (`.campus_run/*.pid`) and targeted command-line matching.
+- Does **not** terminate unrelated Java, Node.js, or MySQL processes.
 - Leaves MySQL Server and all academic database records completely intact.
 
 ---
@@ -316,7 +316,7 @@ Double-clicking `STOP_CAMPUSHARMONY.bat`:
 
 ## 17. How to Securely Create the First Administrator
 
-CampusHarmony features an automated, secure first-run administrator provisioning bootstrap in `AuthController`:
+CampusHarmony features an automated first-run administrator provisioning bootstrap in `AuthController`:
 1. When Spring Boot boots against a newly initialized database, it checks `SELECT COUNT(*) FROM accounts WHERE role='admin'`.
 2. If zero administrator accounts exist, it reads `CAMPUS_ADMIN_LOGIN` and `CAMPUS_ADMIN_PASSWORD` from `.env`.
 3. It securely hashes the password with BCrypt/PBKDF2 and creates the initial administrator account.
@@ -352,28 +352,31 @@ powershell -ExecutionPolicy Bypass -File .\backend\verify-foundation.ps1 -SqlOnl
 
 ## 20. Troubleshooting Common Errors
 
-### 1. Port 8080 or Port 5173 already occupied
-Run `STOP_CAMPUSHARMONY.bat` to clear lingering processes. To manually kill by PID:
+### 1. "CAMPUS_DB_PASSWORD is not set in .env" or Placeholder Error
+Open `.env` in a text editor and replace `your_secure_mysql_password_here` with your actual MySQL password. Ensure `CAMPUS_ADMIN_PASSWORD` is also populated with a secure password.
+
+### 2. Port 8080 or Port 5173 already occupied
+Run `STOP_CAMPUSHARMONY.bat` to clear lingering processes. To inspect active listeners:
 ```cmd
-for /f "tokens=5" %a in ('netstat -aon ^| findstr :8080 ^| findstr LISTENING') do taskkill /F /PID %a
-for /f "tokens=5" %a in ('netstat -aon ^| findstr :5173 ^| findstr LISTENING') do taskkill /F /PID %a
+netstat -aon | findstr :8080
+netstat -aon | findstr :5173
 ```
 
-### 2. MySQL Connection Refused (Native Mode)
+### 3. MySQL Connection Refused (Native Mode)
 Ensure MySQL Server 8.0 service is active:
 ```cmd
 net start MySQL80
 ```
 Verify that `CAMPUS_DB_PASSWORD` in `.env` matches your local MySQL `root` password.
 
-### 3. "Access Denied for user 'root'@'localhost'"
+### 4. "Access Denied for user 'root'@'localhost'"
 Update `.env` with your actual MySQL credentials:
 ```ini
 CAMPUS_DB_USER=root
 CAMPUS_DB_PASSWORD=your_actual_password
 ```
 
-### 4. Docker Desktop Engine Not Running
+### 5. Docker Desktop Engine Not Running
 If you receive `failed to connect to docker API`, start Docker Desktop from the Windows Start menu, ensure the daemon is running, and re-run `RUN_CAMPUSHARMONY.bat`.
 
 ---
