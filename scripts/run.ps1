@@ -211,7 +211,7 @@ Write-Host "[4/5] Starting Spring Boot Backend (Port 8080)..."
 $backendDir = Join-Path $repo "backend"
 $backendPidFile = Join-Path $runDir "backend.pid"
 
-$backendProc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c mvn spring-boot:run" -WorkingDirectory $backendDir -WindowStyle Minimized -PassThru
+$backendProc = Start-Process -FilePath "mvn.cmd" -ArgumentList "spring-boot:run" -WorkingDirectory $backendDir -WindowStyle Minimized -PassThru
 Set-Content -LiteralPath $backendPidFile -Value $backendProc.Id
 
 Write-Host "[INFO] Waiting for Spring Boot Backend on http://localhost:8080/api..."
@@ -244,7 +244,7 @@ Write-Host "[5/5] Starting React Frontend (Port 5173)..."
 $frontendDir = Join-Path $repo "frontend"
 $frontendPidFile = Join-Path $runDir "frontend.pid"
 
-$frontendProc = Start-Process -FilePath "cmd.exe" -ArgumentList "/c npm run dev" -WorkingDirectory $frontendDir -WindowStyle Minimized -PassThru
+$frontendProc = Start-Process -FilePath "npm.cmd" -ArgumentList "run dev" -WorkingDirectory $frontendDir -WindowStyle Minimized -PassThru
 Set-Content -LiteralPath $frontendPidFile -Value $frontendProc.Id
 
 Write-Host "[INFO] Waiting for React Frontend on http://localhost:5173..."
