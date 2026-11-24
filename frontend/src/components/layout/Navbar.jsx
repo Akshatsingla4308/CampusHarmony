@@ -32,21 +32,41 @@ export function Navbar({ menuOpen, toggleMenu }) {
   };
 
   const getPageTitle = (path) => {
-    if (path === "/") return "Institutional Dashboard";
+    if (path === "/") {
+      if (role === "admin") return "Administration Dashboard";
+      if (role === "teacher") return "Teaching Dashboard";
+      if (role === "student") return "Student Dashboard";
+      return "Campus Dashboard";
+    }
     if (path.startsWith("/students")) return "Student Directory & Admissions";
     if (path.startsWith("/teachers")) return "Faculty & Staff Directory";
     if (path.startsWith("/departments")) return "Academic Departments";
     if (path.startsWith("/subjects")) return "Curriculum Subjects";
     if (path.startsWith("/courses")) return "Courses & Academic Offerings";
-    if (path.startsWith("/attendance")) return "Lecture Attendance & Sessions";
-    if (path === "/timetable") return "Master Timetable & Scheduling";
-    if (path === "/complaints") return "Student Grievance Management";
-    if (path.startsWith("/marks")) return "Examinations, Marks & Evaluations";
+    if (path.startsWith("/attendance")) {
+      if (role === "teacher") return "Lecture Attendance & Rosters";
+      if (role === "student") return "My Attendance Record";
+      return "Attendance Management & Sessions";
+    }
+    if (path === "/timetable") {
+      if (role === "teacher") return "Faculty Teaching Timetable";
+      if (role === "student") return "My Weekly Class Schedule";
+      return "Master Timetable & Scheduling";
+    }
+    if (path === "/complaints") {
+      if (role === "student") return "Student Grievance Portal";
+      return "Institutional Grievance Desk";
+    }
+    if (path.startsWith("/marks")) {
+      if (role === "teacher") return "Assessment & Marks Grading";
+      if (role === "student") return "My Grades & Evaluations";
+      return "Examinations, Marks & Evaluations";
+    }
     if (path.startsWith("/transcript")) return "Official Academic Transcripts";
     if (path.startsWith("/defaulters")) return "Attendance Analytics & Defaulters";
     if (path.startsWith("/activities")) return "Campus Activities & Mentorship";
     if (path.startsWith("/profile")) return "Profile & Account Security";
-    return "CampusHarmony ERP";
+    return "CampusHarmony";
   };
 
   return (
