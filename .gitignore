@@ -59,3 +59,12 @@ frontend/.vinxi/
 .classpath
 *.sublime-project
 *.sublime-workspace
+
+# Private Credentials & Demo Spreadsheets
+*.xlsx
+*.xls
+*.csv
+*Credentials*
+private/
+CampusHarmony_Private/
+

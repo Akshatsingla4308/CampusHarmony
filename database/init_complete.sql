@@ -1732,3 +1732,33 @@ DELIMITER ;
 
 -- >>> END FILE: 010_student_complaints.sql <<<
 
+
+-- >>> START FILE: 011_academic_programs_and_mentors.sql <<<
+USE campus_harmony;
+
+CREATE TABLE IF NOT EXISTS academic_programs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    department_id INT NOT NULL,
+    code VARCHAR(30) NOT NULL UNIQUE,
+    name VARCHAR(100) NOT NULL,
+    degree VARCHAR(20) NOT NULL DEFAULT 'B.Tech',
+    duration_years INT NOT NULL DEFAULT 4,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_program_dept FOREIGN KEY (department_id)
+        REFERENCES departments(id) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO academic_programs (id, department_id, code, name, degree, duration_years) VALUES
+(1, 1, 'BTECH-CSE-CORE', 'CSE Core', 'B.Tech', 4),
+(2, 1, 'BTECH-CSE-AIML', 'CSE AI & ML', 'B.Tech', 4),
+(3, 1, 'BTECH-CSE-AIFT', 'CSE AI & FT', 'B.Tech', 4)
+ON DUPLICATE KEY UPDATE name=VALUES(name), degree=VALUES(degree), duration_years=VALUES(duration_years);
+
+-- Safe conditional column additions for sections and students
+ALTER TABLE sections ADD COLUMN IF NOT EXISTS program_id INT NULL;
+ALTER TABLE sections ADD COLUMN IF NOT EXISTS mentor_teacher_id VARCHAR(30) NULL;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS program_id INT NULL;
+
+-- >>> END FILE: 011_academic_programs_and_mentors.sql <<<
+
+

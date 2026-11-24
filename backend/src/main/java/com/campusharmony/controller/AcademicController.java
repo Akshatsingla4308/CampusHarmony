@@ -37,12 +37,37 @@ public class AcademicController {
     }
     @GetMapping("/academic/catalog")
     public Map<String,Object> catalog(){
-        return Map.of("departments",db.queryForList("SELECT id,name FROM departments ORDER BY name"),
-            "terms",db.queryForList("SELECT id,name FROM academic_periods ORDER BY id DESC"),
-            "subjects",db.queryForList("SELECT subject_key,label FROM subjects ORDER BY label"),
-            "courses",db.queryForList("SELECT code,name,semester,department_id FROM courses ORDER BY name"),
-            "teachers",db.queryForList("SELECT teacher_id,name FROM accounts JOIN teachers ON teacher_id=teachers.id ORDER BY name"),
-            "sections",db.queryForList("SELECT s.*,d.code department,t.code term FROM sections s JOIN departments d ON d.id=s.department_id JOIN academic_periods t ON t.id=s.academic_period_id ORDER BY s.id"));
+        List<Map<String,Object>> programs = List.of();
+        try {
+            programs = db.queryForList("SELECT id, department_id, code, name, degree, duration_years FROM academic_programs ORDER BY id");
+        } catch (Exception ignored) {}
+
+        List<Map<String,Object>> sections;
+        try {
+            sections = db.queryForList("""
+                SELECT s.*, d.code department, t.code term,
+                       COALESCE(m.name, 'Unassigned') AS mentor_name,
+                       COALESCE(p.name, 'CSE Core') AS program_name
+                FROM sections s
+                JOIN departments d ON d.id=s.department_id
+                JOIN academic_periods t ON t.id=s.academic_period_id
+                LEFT JOIN teachers m ON m.id=s.mentor_teacher_id
+                LEFT JOIN academic_programs p ON p.id=s.program_id
+                ORDER BY s.id
+                """);
+        } catch (Exception ex) {
+            sections = db.queryForList("SELECT s.*,d.code department,t.code term FROM sections s JOIN departments d ON d.id=s.department_id JOIN academic_periods t ON t.id=s.academic_period_id ORDER BY s.id");
+        }
+
+        Map<String,Object> res = new HashMap<>();
+        res.put("departments", db.queryForList("SELECT id,name FROM departments ORDER BY name"));
+        res.put("terms", db.queryForList("SELECT id,name FROM academic_periods ORDER BY id DESC"));
+        res.put("subjects", db.queryForList("SELECT subject_key,label FROM subjects ORDER BY label"));
+        res.put("courses", db.queryForList("SELECT code,name,semester,department_id FROM courses ORDER BY name"));
+        res.put("teachers", db.queryForList("SELECT teacher_id,name FROM accounts JOIN teachers ON teacher_id=teachers.id ORDER BY name"));
+        res.put("programs", programs);
+        res.put("sections", sections);
+        return res;
     }
     @PostMapping("/academic/sections")
     public void createSection(@Valid @RequestBody Section s){

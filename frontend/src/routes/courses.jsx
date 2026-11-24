@@ -322,6 +322,23 @@ function CoursesPage() {
       render: (val) => <span className="font-semibold text-foreground text-sm">{val}</span>,
     },
     {
+      header: "Program",
+      key: "program_name",
+      sortable: true,
+      render: (val) => <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-xs font-semibold">{val || "CSE Core"}</span>,
+    },
+    {
+      header: "Section Mentor",
+      key: "mentor_name",
+      sortable: true,
+      render: (val) => (
+        <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          {val || "Unassigned"}
+        </span>
+      ),
+    },
+    {
       header: "Department",
       key: "department",
       sortable: true,
@@ -520,8 +537,8 @@ function CoursesPage() {
           columns={sectionColumns}
           data={catalog.sections}
           keyField="id"
-          searchPlaceholder="Search sections by name or department..."
-          searchFields={["name", "department", "term"]}
+          searchPlaceholder="Search sections by name, mentor, program, or department..."
+          searchFields={["name", "department", "term", "mentor_name", "program_name"]}
           loading={loading}
           emptyMessage="No academic sections created yet."
         />

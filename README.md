@@ -20,14 +20,15 @@ GitHub Repository: [https://github.com/Akshatsingla4308/CampusHarmony.git](https
 10. [Software Prerequisites](#10-software-prerequisites)
 11. [First-Time Installation](#11-first-time-installation)
 12. [Database Initialization](#12-database-initialization)
-13. [How to Configure Environment Variables](#13-how-to-configure-environment-variables)
-14. [How to Launch the Entire Application](#14-how-to-launch-the-entire-application)
-15. [How to Stop the Application](#15-how-to-stop-the-application)
-16. [How to Access the Website](#16-how-to-access-the-website)
-17. [How to Securely Create the First Administrator](#17-how-to-securely-create-the-first-administrator)
-18. [How to Run Frontend Tests](#18-how-to-run-frontend-tests)
-19. [How to Run Backend Tests](#19-how-to-run-backend-tests)
-20. [Troubleshooting Common Errors](#20-troubleshooting-common-errors)
+13. [How to Seed the Realistic Academic Demonstration Dataset](#13-how-to-seed-the-realistic-academic-demonstration-dataset)
+14. [How to Configure Environment Variables](#14-how-to-configure-environment-variables)
+15. [How to Launch the Entire Application](#15-how-to-launch-the-entire-application)
+16. [How to Stop the Application](#16-how-to-stop-the-application)
+17. [How to Access the Website & Demo Logins](#17-how-to-access-the-website--demo-logins)
+18. [How to Securely Create the First Administrator](#18-how-to-securely-create-the-first-administrator)
+19. [How to Run Frontend Tests](#19-how-to-run-frontend-tests)
+20. [How to Run Backend Tests](#20-how-to-run-backend-tests)
+21. [Troubleshooting Common Errors](#21-troubleshooting-common-errors)
 
 ---
 
@@ -238,7 +239,49 @@ This file executes:
 
 ---
 
-## 13. How to Configure Environment Variables
+## 13. How to Seed the Realistic Academic Demonstration Dataset
+
+CampusHarmony includes an interconnected, realistic university demonstration dataset designed for academic review and grading.
+
+To seed or reset the complete demonstration dataset:
+
+```cmd
+SETUP_DEMO.bat
+```
+
+Simply **double-click** `SETUP_DEMO.bat` or run in PowerShell:
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\seed-demo.ps1
+```
+
+### What this provisions automatically:
+1. **3 Academic Programs**:
+   - `B.Tech CSE Core` (Fully populated academic cohort)
+   - `B.Tech CSE AI & ML` (Catalog program)
+   - `B.Tech CSE AI & FT` (Catalog program)
+2. **5 Academic Sections for CSE Core**:
+   - `CSE-A`, `CSE-B`, `CSE-C`, `CSE-D`, `CSE-E` (Semester 5, Autumn 2026)
+3. **15 Faculty Members**:
+   - Exactly 3 faculty members per curricular subject.
+   - Realistic teaching workloads: maximum 2 sections per teacher (25 course offerings total).
+   - 5 Designated Section Mentors assigned from the 15 faculty members.
+4. **Exactly 300 Enrolled Students**:
+   - 60 students per section with distinct names, roll numbers (`24CSE001` to `24CSE300`), official institutional emails, phone numbers, and individual login accounts.
+   - 1,500 course enrollments across 5 core subjects: Data Structures & Algorithms, Discrete Mathematics, Database Management Systems, Front End Engineering-II, and OOP with Java.
+5. **Conflict-Free Weekly Timetable**:
+   - Complete Monday to Saturday schedule (Periods 1 to 5, 09:00 to 15:00).
+   - 150 verified timetable entries with **zero collisions** across rooms, faculty, and student sections.
+6. **Multi-Week Attendance History**:
+   - 375 conducted sessions with 22,500 student attendance records across the semester.
+   - Realistic attendance distributions: High attendance (90%–100%), Normal attendance (75%–89%), and Defaulters (< 75% triggering shortage warnings).
+7. **Assessments & Continuous Evaluation**:
+   - 75 course assessments (Midterm, Quiz, Lab practical) with 4,500 graded marks entries strictly validated within maximum limits.
+8. **Student Grievance Resolution Desk**:
+   - 12 multi-category student tickets (Academic, Attendance, Infrastructure, Examination) with status flows (Open, In Progress, Resolved) and administrative audit trails.
+
+---
+
+## 14. How to Configure Environment Variables
 
 Create `.env` from `.env.example` in the project root:
 
@@ -271,7 +314,7 @@ VITE_API_URL=http://localhost:8080/api
 
 ---
 
-## 14. How to Launch the Entire Application
+## 15. How to Launch the Entire Application
 
 CampusHarmony provides an automated one-click launcher for Windows:
 
@@ -296,7 +339,7 @@ Simply **double-click** `RUN_CAMPUSHARMONY.bat` from Windows Explorer.
 
 ---
 
-## 15. How to Stop the Application
+## 16. How to Stop the Application
 
 To safely shut down all CampusHarmony services:
 
@@ -312,7 +355,7 @@ Double-clicking `STOP_CAMPUSHARMONY.bat`:
 
 ---
 
-## 16. How to Access the Website
+## 17. How to Access the Website & Demo Logins
 
 | Endpoint | URL | Description |
 |---|---|---|
@@ -320,19 +363,41 @@ Double-clicking `STOP_CAMPUSHARMONY.bat`:
 | **Backend REST API** | [http://localhost:8080/api](http://localhost:8080/api) | Spring Boot REST endpoints |
 | **API Session Check** | [http://localhost:8080/api/auth/me](http://localhost:8080/api/auth/me) | Authentication identity status endpoint |
 
+### Curated Demonstration Logins:
+
+| Role / Persona | Name | Username | Standard Password | Key Features to Test |
+|---|---|---|---|---|
+| **Administrator** | System Administrator | `admin` | *(Set in .env)* | Academic cockpit: Audit log, catalog, section creation, timetable overview, grievance redressal |
+| **Faculty & Mentor** | Dr. Rajesh Rao | `prof_rao` | `Teacher@123456` | DSA Faculty & CSE-A Mentor. Assigned to CSE-A & CSE-B. Attendance sessions, marks grading, timetable |
+| **Faculty & Mentor** | Dr. Priya Sharma | `prof_sharma` | `Teacher@123456` | DBMS Faculty & CSE-B Mentor. Assigned to CSE-A & CSE-B. Database practical evaluations |
+| **Faculty & Mentor** | Dr. Amit Kapoor | `prof_kapoor` | `Teacher@123456` | OOP Java Faculty & CSE-C Mentor. Java continuous assessments |
+| **Faculty & Mentor** | Dr. Sunita Mehra | `prof_mehra` | `Teacher@123456` | FEE-II Faculty & CSE-D Mentor. Web engineering marks and lab sessions |
+| **Faculty & Mentor** | Dr. Vikram Joshi | `prof_joshi` | `Teacher@123456` | Discrete Math Faculty & CSE-E Mentor. Mathematical logic evaluation |
+| **Faculty (Single Section)** | Prof. Arjun Sengupta | `prof_sengupta` | `Teacher@123456` | DSA Faculty handling CSE-E only (1 section load) |
+| **Student (High Att.)** | Ayaan Verma | `24CSE001` | `Student@123456` | Section CSE-A. 100% attendance standing. Outstanding grades (O/A+). Timetable |
+| **Student (Normal Att.)** | Aarav Nair | `24CSE046` | `Student@123456` | Section CSE-A. 80.0% attendance standing. Demonstrates normal academic progress |
+| **Student (Defaulter)** | Aadhya Nair | `24CSE058` | `Student@123456` | Section CSE-A. 53.3% attendance (<75%). Triggers shortage warning badge and alert |
+| **Student (Grievance)** | Sai Bhattacharya | `24CSE005` | `Student@123456` | Section CSE-A. Filed re-evaluation grievance with full administrative resolution timeline |
+
+> [!NOTE]
+> **Complete Credentials Workbook**:
+> The full roster of all 15 faculty members and all 300 student credentials is saved in the private Excel workbook outside Git:
+> `CampusHarmony_Private/CampusHarmony_Demo_Credentials.xlsx`.
+> For security, this file is never committed or published publicly.
+
 ---
 
-## 17. How to Securely Create the First Administrator
+## 18. How to Securely Create the First Administrator
 
 CampusHarmony features an automated first-run administrator provisioning bootstrap in `AuthController`:
 1. When Spring Boot boots against a newly initialized database, it checks `SELECT COUNT(*) FROM accounts WHERE role='admin'`.
 2. If zero administrator accounts exist, it reads `CAMPUS_ADMIN_LOGIN` and `CAMPUS_ADMIN_PASSWORD` from `.env`.
-3. It securely hashes the password with BCrypt/PBKDF2 and creates the initial administrator account.
+3. It securely hashes the password with PBKDF2 (600,000 rounds HMAC-SHA256) and creates the initial administrator account.
 4. On subsequent boots, the existing administrator account is detected, and credentials are preserved without re-hashing or overwriting.
 
 ---
 
-## 18. How to Run Frontend Tests
+## 19. How to Run Frontend Tests
 
 The frontend test suite runs 37 automated tests across 12 test files covering components, router flows, and role logic:
 
@@ -343,7 +408,7 @@ npm test
 
 ---
 
-## 19. How to Run Backend Tests
+## 20. How to Run Backend Tests
 
 ### Controller & Security Access Tests:
 ```cmd
@@ -358,7 +423,7 @@ powershell -ExecutionPolicy Bypass -File .\backend\verify-foundation.ps1 -SqlOnl
 
 ---
 
-## 20. Troubleshooting Common Errors
+## 21. Troubleshooting Common Errors
 
 ### 1. "CAMPUS_DB_PASSWORD is not set in .env" or Placeholder Error
 Open `.env` in a text editor and replace `your_secure_mysql_password_here` with your actual MySQL password. Ensure `CAMPUS_ADMIN_PASSWORD` is also populated with a secure password.
