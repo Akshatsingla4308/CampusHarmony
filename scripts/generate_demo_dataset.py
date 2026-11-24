@@ -32,6 +32,8 @@ os.chdir(REPO_DIR)
 env_file = os.path.join(REPO_DIR, ".env")
 db_pass = ""
 db_user = "root"
+admin_pass = os.environ.get("CAMPUS_ADMIN_PASSWORD", "AdminSecure@2026!")
+
 if os.path.exists(env_file):
     with open(env_file, "r", encoding="utf-8") as f:
         for line in f:
@@ -44,6 +46,8 @@ if os.path.exists(env_file):
                     db_pass = v
                 elif k == "CAMPUS_DB_USER":
                     db_user = v
+                elif k == "CAMPUS_ADMIN_PASSWORD":
+                    admin_pass = v
 
 print(f"[INFO] Initializing dataset generator (DB User: {db_user})...")
 
@@ -55,12 +59,24 @@ def get_pbkdf2_hash(password: str, salt_byte: int) -> str:
     key_b64 = base64.b64encode(key).decode("utf-8")
     return f"600000${salt_b64}${key_b64}"
 
-TEACHER_PASSWORD = "Teacher@123456"
-STUDENT_PASSWORD = "Student@123456"
-ADMIN_PASSWORD = "AdminSecure@2026!"
+def get_pbkdf2_hash_for_account(password: str, identifier: str) -> str:
+    salt = hashlib.sha256(f"CH_SALT_2026_{identifier}".encode("utf-8")).digest()[:16]
+    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 600000, 32)
+    salt_b64 = base64.b64encode(salt).decode("utf-8")
+    key_b64 = base64.b64encode(key).decode("utf-8")
+    return f"600000${salt_b64}${key_b64}"
 
-TEACHER_HASH = get_pbkdf2_hash(TEACHER_PASSWORD, 0x01)
-STUDENT_HASH = get_pbkdf2_hash(STUDENT_PASSWORD, 0x02)
+def generate_teacher_password(teacher_id: str, login: str) -> str:
+    h = hashlib.sha256(f"CH_TEACHER_KEY_2026_{teacher_id}_{login}".encode()).hexdigest()
+    surname = login.replace("prof_", "").capitalize()
+    return f"Tch@{surname}#{h[:4].upper()}!26"
+
+def generate_student_password(roll: str) -> str:
+    h = hashlib.sha256(f"CH_STUDENT_KEY_2026_{roll}".encode()).hexdigest()
+    num = roll.replace("24CSE", "")
+    return f"Stu!C5{num}${h[:4].upper()}!26"
+
+ADMIN_PASSWORD = admin_pass
 ADMIN_HASH = get_pbkdf2_hash(ADMIN_PASSWORD, 0x03)
 
 # 2. Programs
@@ -178,6 +194,11 @@ TEACHERS = [
     }
 ]
 
+# Generate unique credentials and PBKDF2 hashes for each faculty member
+for t in TEACHERS:
+    t["password"] = generate_teacher_password(t["id"], t["login"])
+    t["password_hash"] = get_pbkdf2_hash_for_account(t["password"], t["login"])
+
 # 5. Sections Configuration
 SECTIONS = [
     {"id": 1, "name": "CSE-A", "mentor_id": "T-1001", "room": "LT-101", "lab": "Lab-CS1"},
@@ -269,6 +290,9 @@ for sec in SECTIONS:
         else:
             att_profile = "Shortage"   # < 75%
             
+        stu_pw = generate_student_password(roll)
+        stu_hash = get_pbkdf2_hash_for_account(stu_pw, roll)
+
         STUDENTS.append({
             "id": student_id_counter,
             "roll": roll,
@@ -283,7 +307,9 @@ for sec in SECTIONS:
             "section_id": sec["id"],
             "section_name": sec["name"],
             "mentor_id": sec["mentor_id"],
-            "att_profile": att_profile
+            "att_profile": att_profile,
+            "password": stu_pw,
+            "password_hash": stu_hash
         })
         student_id_counter += 1
         roll_counter += 1
@@ -845,7 +871,7 @@ with open(SQL_FILE, "w", encoding="utf-8") as f:
     f.write("INSERT INTO accounts (login, role, display_name, password_hash, teacher_id) VALUES\n")
     for i, t in enumerate(TEACHERS):
         sep = "," if i < len(TEACHERS) - 1 else "\nON DUPLICATE KEY UPDATE display_name=VALUES(display_name), password_hash=VALUES(password_hash);\n\n"
-        f.write(f"('{t['login']}', 'teacher', '{t['name']}', '{TEACHER_HASH}', '{t['id']}'){sep}")
+        f.write(f"('{t['login']}', 'teacher', '{t['name']}', '{t['password_hash']}', '{t['id']}'){sep}")
 
     # Ensure admin account
     f.write("-- Administrator Account\n")
@@ -882,7 +908,7 @@ with open(SQL_FILE, "w", encoding="utf-8") as f:
     f.write("INSERT INTO accounts (login, role, display_name, password_hash, student_id) VALUES\n")
     for i, s in enumerate(STUDENTS):
         sep = "," if i < len(STUDENTS) - 1 else "\nON DUPLICATE KEY UPDATE display_name=VALUES(display_name), password_hash=VALUES(password_hash);\n\n"
-        f.write(f"('{s['roll']}', 'student', '{s['name']}', '{STUDENT_HASH}', {s['id']}){sep}")
+        f.write(f"('{s['roll']}', 'student', '{s['name']}', '{s['password_hash']}', {s['id']}){sep}")
 
     # 10. Enrollments
     f.write("-- 10. 1,500 Course Enrollments\n")
@@ -1011,18 +1037,20 @@ for col_idx in range(1, len(headers1) + 1):
     cell.fill = FILL_HEADER
     cell.alignment = Alignment(horizontal="center", vertical="center")
 
+teacher_map = {t["login"]: t for t in TEACHERS}
+
 demo_accounts = [
     ("Administrator", "System Administrator", "admin", ADMIN_PASSWORD, "Full system cockpit: Audit feed, section creation, offerings, timetable overview, grievance governance"),
-    ("Faculty & Mentor", "Dr. Rajesh Rao", "prof_rao", TEACHER_PASSWORD, "DSA Faculty & Mentor for CSE-A. Assigned to CSE-A & CSE-B. Attendance sessions, marks grading, timetable"),
-    ("Faculty & Mentor", "Dr. Priya Sharma", "prof_sharma", TEACHER_PASSWORD, "DBMS Faculty & Mentor for CSE-B. Assigned to CSE-A & CSE-B. View student queries and lab marks"),
-    ("Faculty & Mentor", "Dr. Amit Kapoor", "prof_kapoor", TEACHER_PASSWORD, "OOP Java Faculty & Mentor for CSE-C. Assigned to CSE-A & CSE-B. Marks recording & assessments"),
-    ("Faculty & Mentor", "Dr. Sunita Mehra", "prof_mehra", TEACHER_PASSWORD, "FEE-II Faculty & Mentor for CSE-D. Assigned to CSE-A & CSE-B. Web development curriculum grading"),
-    ("Faculty & Mentor", "Dr. Vikram Joshi", "prof_joshi", TEACHER_PASSWORD, "Discrete Math Faculty & Mentor for CSE-E. Assigned to CSE-A & CSE-B. Mathematical foundation tests"),
-    ("Faculty (Section E)", "Prof. Arjun Sengupta", "prof_sengupta", TEACHER_PASSWORD, "DSA Faculty handling CSE-E only (1 section load). Demonstrates single-section workload"),
-    ("Student (High Att.)", STUDENTS[0]["name"], STUDENTS[0]["roll"], STUDENT_PASSWORD, f"Section CSE-A. 93.3% overall attendance. High-achieving marks (O/A+). Full timetable access"),
-    ("Student (Normal Att.)", STUDENTS[45]["name"], STUDENTS[45]["roll"], STUDENT_PASSWORD, f"Section CSE-A. 80.0% overall attendance. Average marks (B+/A). Demonstrates normal standing"),
-    ("Student (Shortage)", STUDENTS[58]["name"], STUDENTS[58]["roll"], STUDENT_PASSWORD, f"Section CSE-A. 60.0% attendance (<75%). Triggers attendance warning badge & shortage alerts"),
-    ("Student (Grievance)", STUDENTS[4]["name"], STUDENTS[4]["roll"], STUDENT_PASSWORD, f"Section CSE-A. Filed re-evaluation grievance GRV-2026-1001 with full audit resolution trail")
+    ("Faculty & Mentor", "Dr. Rajesh Rao", "prof_rao", teacher_map["prof_rao"]["password"], "DSA Faculty & Mentor for CSE-A. Assigned to CSE-A & CSE-B. Attendance sessions, marks grading, timetable"),
+    ("Faculty & Mentor", "Dr. Priya Sharma", "prof_sharma", teacher_map["prof_sharma"]["password"], "DBMS Faculty & Mentor for CSE-B. Assigned to CSE-A & CSE-B. View student queries and lab marks"),
+    ("Faculty & Mentor", "Dr. Amit Kapoor", "prof_kapoor", teacher_map["prof_kapoor"]["password"], "OOP Java Faculty & Mentor for CSE-C. Assigned to CSE-A & CSE-B. Marks recording & assessments"),
+    ("Faculty & Mentor", "Dr. Sunita Mehra", "prof_mehra", teacher_map["prof_mehra"]["password"], "FEE-II Faculty & Mentor for CSE-D. Assigned to CSE-A & CSE-B. Web development curriculum grading"),
+    ("Faculty & Mentor", "Dr. Vikram Joshi", "prof_joshi", teacher_map["prof_joshi"]["password"], "Discrete Math Faculty & Mentor for CSE-E. Assigned to CSE-A & CSE-B. Mathematical foundation tests"),
+    ("Faculty (Section E)", "Prof. Arjun Sengupta", "prof_sengupta", teacher_map["prof_sengupta"]["password"], "DSA Faculty handling CSE-E only (1 section load). Demonstrates single-section workload"),
+    ("Student (High Att.)", STUDENTS[0]["name"], STUDENTS[0]["roll"], STUDENTS[0]["password"], f"Section CSE-A. 93.3% overall attendance. High-achieving marks (O/A+). Full timetable access"),
+    ("Student (Normal Att.)", STUDENTS[45]["name"], STUDENTS[45]["roll"], STUDENTS[45]["password"], f"Section CSE-A. 80.0% overall attendance. Average marks (B+/A). Demonstrates normal standing"),
+    ("Student (Shortage)", STUDENTS[58]["name"], STUDENTS[58]["roll"], STUDENTS[58]["password"], f"Section CSE-A. 60.0% attendance (<75%). Triggers attendance warning badge & shortage alerts"),
+    ("Student (Grievance)", STUDENTS[4]["name"], STUDENTS[4]["roll"], STUDENTS[4]["password"], f"Section CSE-A. Filed re-evaluation grievance GRV-2026-1001 with full audit resolution trail")
 ]
 
 for item in demo_accounts:
@@ -1051,7 +1079,7 @@ ws2.append(["3 Teachers per subject, maximum 2 sections per faculty member, 5 de
 ws2["A2"].font = FONT_SUBTITLE
 ws2.append([])
 
-headers2 = ["Faculty ID", "Name", "Login Username", "Institutional Email", "Phone", "Curricular Subject", "Assigned Sections", "Teaching Load", "Designated Mentor Section", "Standard Password"]
+headers2 = ["Faculty ID", "Name", "Login Username", "Institutional Email", "Phone", "Curricular Subject", "Assigned Sections", "Teaching Load", "Designated Mentor Section", "Account Password"]
 ws2.append(headers2)
 row_idx = 4
 for col_idx in range(1, len(headers2) + 1):
@@ -1067,7 +1095,7 @@ for t in TEACHERS:
     load_str = f"{len(t['sections'])} Section{'s' if len(t['sections']) > 1 else ''}"
     row_data = [
         t["id"], t["name"], t["login"], t["email"], t["phone"],
-        t["subject_name"], sections_str, load_str, mentor_text, TEACHER_PASSWORD
+        t["subject_name"], sections_str, load_str, mentor_text, t["password"]
     ]
     ws2.append(row_data)
     for c in range(1, len(row_data) + 1):
@@ -1089,7 +1117,7 @@ ws3.append(["Exactly 60 students per section (CSE-A to CSE-E) enrolled in Autumn
 ws3["A2"].font = FONT_SUBTITLE
 ws3.append([])
 
-headers3 = ["Roll Number", "Student Full Name", "Login Username", "Gender", "Program", "Section", "Semester", "Assigned Faculty Mentor", "Official Email", "Contact Phone", "Attendance Standing", "Standard Password"]
+headers3 = ["Roll Number", "Student Full Name", "Login Username", "Gender", "Program", "Section", "Semester", "Assigned Faculty Mentor", "Official Email", "Contact Phone", "Attendance Standing", "Account Password"]
 ws3.append(headers3)
 row_idx = 4
 for col_idx in range(1, len(headers3) + 1):
@@ -1106,7 +1134,7 @@ for s in STUDENTS:
     row_data = [
         s["roll"], s["name"], s["roll"], s["gender"], "B.Tech CSE Core",
         s["section_name"], f"Semester {s['semester']}", mentor_name,
-        s["email"], s["phone"], s["att_profile"], STUDENT_PASSWORD
+        s["email"], s["phone"], s["att_profile"], s["password"]
     ]
     ws3.append(row_data)
     for c in range(1, len(row_data) + 1):

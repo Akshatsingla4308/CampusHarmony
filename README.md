@@ -195,7 +195,7 @@ CampusHarmony/
 ### Option B: Native Windows Mode
 - **Java Development Kit (JDK)**: JDK 17 or JDK 21 (Eclipse Temurin or Oracle JDK).
 - **Apache Maven**: Version 3.8+ (accessible in system `PATH`).
-- **Node.js & npm**: Node.js 22 LTS (v22.12.0+) recommended (Node.js 20.18+ supported; npm 9+). Node.js 18 is unsupported due to TanStack Start engine requirements.
+- **Node.js & npm**: Node.js 22 LTS (v22.12.0+) recommended for Windows setup (Vite 8 requires Node.js 20.19+ or 22.12+; npm 9+). Node.js < 20.19 is unsupported.
 - **MySQL Server**: MySQL Server 8.0+ running on `localhost:3306`.
 - **PowerShell**: Windows PowerShell 5.1 (built into Windows) or PowerShell 7+.
 
@@ -367,27 +367,27 @@ Double-clicking `STOP_CAMPUSHARMONY.bat`:
 | **Backend REST API** | [http://localhost:8080/api](http://localhost:8080/api) | Spring Boot REST endpoints |
 | **API Session Check** | [http://localhost:8080/api/auth/me](http://localhost:8080/api/auth/me) | Authentication identity status endpoint |
 
-### Curated Demonstration Logins:
+### Curated Demonstration Accounts:
 
-| Role / Persona | Name | Username | Standard Password | Key Features to Test |
+| Role / Persona | Name | Username | Password Location | Key Features to Test |
 |---|---|---|---|---|
-| **Administrator** | System Administrator | `admin` | *(Set in .env)* | Academic cockpit: Audit log, catalog, section creation, timetable overview, grievance redressal |
-| **Faculty & Mentor** | Dr. Rajesh Rao | `prof_rao` | `Teacher@123456` | DSA Faculty & CSE-A Mentor. Assigned to CSE-A & CSE-B. Attendance sessions, marks grading, timetable |
-| **Faculty & Mentor** | Dr. Priya Sharma | `prof_sharma` | `Teacher@123456` | DBMS Faculty & CSE-B Mentor. Assigned to CSE-A & CSE-B. Database practical evaluations |
-| **Faculty & Mentor** | Dr. Amit Kapoor | `prof_kapoor` | `Teacher@123456` | OOP Java Faculty & CSE-C Mentor. Java continuous assessments |
-| **Faculty & Mentor** | Dr. Sunita Mehra | `prof_mehra` | `Teacher@123456` | FEE-II Faculty & CSE-D Mentor. Web engineering marks and lab sessions |
-| **Faculty & Mentor** | Dr. Vikram Joshi | `prof_joshi` | `Teacher@123456` | Discrete Math Faculty & CSE-E Mentor. Mathematical logic evaluation |
-| **Faculty (Single Section)** | Prof. Arjun Sengupta | `prof_sengupta` | `Teacher@123456` | DSA Faculty handling CSE-E only (1 section load) |
-| **Student (High Att.)** | Ayaan Verma | `24CSE001` | `Student@123456` | Section CSE-A. 100% attendance standing. Outstanding grades (O/A+). Timetable |
-| **Student (Normal Att.)** | Aarav Nair | `24CSE046` | `Student@123456` | Section CSE-A. 80.0% attendance standing. Demonstrates normal academic progress |
-| **Student (Defaulter)** | Aadhya Nair | `24CSE058` | `Student@123456` | Section CSE-A. 53.3% attendance (<75%). Triggers shortage warning badge and alert |
-| **Student (Grievance)** | Sai Bhattacharya | `24CSE005` | `Student@123456` | Section CSE-A. Filed re-evaluation grievance with full administrative resolution timeline |
+| **Administrator** | System Administrator | `admin` | *(Configured in local .env)* | Academic cockpit: Audit log, catalog, section creation, timetable overview, grievance redressal |
+| **Faculty & Mentor** | Dr. Rajesh Rao | `prof_rao` | *(In private credentials workbook)* | DSA Faculty & CSE-A Mentor. Assigned to CSE-A & CSE-B. Attendance sessions, marks grading, timetable |
+| **Faculty & Mentor** | Dr. Priya Sharma | `prof_sharma` | *(In private credentials workbook)* | DBMS Faculty & CSE-B Mentor. Assigned to CSE-A & CSE-B. Database practical evaluations |
+| **Faculty & Mentor** | Dr. Amit Kapoor | `prof_kapoor` | *(In private credentials workbook)* | OOP Java Faculty & CSE-C Mentor. Java continuous assessments |
+| **Faculty & Mentor** | Dr. Sunita Mehra | `prof_mehra` | *(In private credentials workbook)* | FEE-II Faculty & CSE-D Mentor. Web engineering marks and lab sessions |
+| **Faculty & Mentor** | Dr. Vikram Joshi | `prof_joshi` | *(In private credentials workbook)* | Discrete Math Faculty & CSE-E Mentor. Mathematical logic evaluation |
+| **Faculty (Single Section)** | Prof. Arjun Sengupta | `prof_sengupta` | *(In private credentials workbook)* | DSA Faculty handling CSE-E only (1 section load) |
+| **Student (High Att.)** | Ayaan Verma | `24CSE001` | *(In private credentials workbook)* | Section CSE-A. 100% attendance standing. Outstanding grades (O/A+). Timetable |
+| **Student (Normal Att.)** | Aarav Nair | `24CSE046` | *(In private credentials workbook)* | Section CSE-A. 80.0% attendance standing. Demonstrates normal academic progress |
+| **Student (Defaulter)** | Aadhya Nair | `24CSE058` | *(In private credentials workbook)* | Section CSE-A. 53.3% attendance (<75%). Triggers shortage warning badge and alert |
+| **Student (Grievance)** | Sai Bhattacharya | `24CSE005` | *(In private credentials workbook)* | Section CSE-A. Filed re-evaluation grievance with full administrative resolution timeline |
 
 > [!NOTE]
-> **Complete Credentials Workbook**:
-> The full roster of all 15 faculty members and all 300 student credentials is saved in the private Excel workbook outside Git:
+> **Private Credentials Workbook Outside Git**:
+> All individual demonstration passwords for faculty and students are generated as private, unique credentials stored solely inside the private Excel workbook outside Git:
 > `CampusHarmony_Private/CampusHarmony_Demo_Credentials.xlsx`.
-> For security, this file is never committed or published publicly.
+> For security, no individual passwords are published in public documentation or tracked in Git.
 
 ---
 

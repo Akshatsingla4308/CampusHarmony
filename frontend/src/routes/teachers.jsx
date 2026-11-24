@@ -30,7 +30,7 @@ function TeachersPage() {
     email: "",
     phone: "",
     cabin: "",
-    password: "Teacher@123456",
+    password: "",
   });
 
   const loadData = async () => {
@@ -61,7 +61,7 @@ function TeachersPage() {
       email: "",
       phone: "",
       cabin: "",
-      password: "Teacher@123456",
+      password: "",
     });
     setIsModalOpen(true);
   };
@@ -101,7 +101,7 @@ function TeachersPage() {
           body: {
             login: formData.login.trim().toLowerCase(),
             name: formData.name.trim(),
-            password: formData.password || "Teacher@123456",
+            password: formData.password ? formData.password.trim() : "",
             departmentId: Number(formData.departmentId),
             subject: formData.subject.trim(),
           },
@@ -348,7 +348,7 @@ function TeachersPage() {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="portal-input"
-                placeholder="e.g. Teacher@123456"
+                placeholder="Enter initial faculty password (min 12 chars)"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
                 Faculty member uses this password along with their Faculty ID to sign in.

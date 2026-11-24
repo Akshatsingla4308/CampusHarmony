@@ -5,9 +5,9 @@
 #   - 3 Academic Programs (CSE Core, CSE AI & ML, CSE AI & FT)
 #   - 5 Sections: CSE-A, CSE-B, CSE-C, CSE-D, CSE-E (Semester 5)
 #   - 5 Curricular Subjects: DSA, Discrete Math, DBMS, Front End Eng-II, OOP Java
-#   - 15 Faculty Members: 3 per subject, max 2 sections per teacher [Teacher@123456]
+#   - 15 Faculty Members: 3 per subject, max 2 sections per teacher
 #   - 5 Section Mentors assigned from the 15 faculty members
-#   - Exactly 300 Students: 60 per section with unique records & accounts [Student@123456]
+#   - Exactly 300 Students: 60 per section with unique records & accounts
 #   - 25 Course Offerings & 1,500 Enrollments
 #   - Full Weekly Timetable (Mon-Sat) with verified 0 conflicts
 #   - Multi-week Attendance History (High, Normal, <75% Defaulter profiles)
@@ -102,19 +102,19 @@ Write-Host "     Account ID: admin"
 Write-Host "     Password:   (configured in your .env file)"
 Write-Host ""
 Write-Host "  2. Faculty Members (15 Total — 3 per subject, 5 Section Mentors):"
-Write-Host "     - Dr. Rajesh Rao     (DSA, Mentor CSE-A)       : prof_rao      [Teacher@123456]"
-Write-Host "     - Dr. Priya Sharma   (DBMS, Mentor CSE-B)      : prof_sharma   [Teacher@123456]"
-Write-Host "     - Dr. Amit Kapoor    (OOP Java, Mentor CSE-C)  : prof_kapoor   [Teacher@123456]"
-Write-Host "     - Dr. Sunita Mehra   (FEE-II, Mentor CSE-D)    : prof_mehra    [Teacher@123456]"
-Write-Host "     - Dr. Vikram Joshi   (Discrete, Mentor CSE-E)  : prof_joshi    [Teacher@123456]"
+Write-Host "     - Dr. Rajesh Rao     (DSA, Mentor CSE-A)       : prof_rao"
+Write-Host "     - Dr. Priya Sharma   (DBMS, Mentor CSE-B)      : prof_sharma"
+Write-Host "     - Dr. Amit Kapoor    (OOP Java, Mentor CSE-C)  : prof_kapoor"
+Write-Host "     - Dr. Sunita Mehra   (FEE-II, Mentor CSE-D)    : prof_mehra"
+Write-Host "     - Dr. Vikram Joshi   (Discrete, Mentor CSE-E)  : prof_joshi"
 Write-Host ""
 Write-Host "  3. Students (300 Total — 60 per section in CSE-A through CSE-E):"
-Write-Host "     - High Attendance   (Section CSE-A, 100%)      : 24CSE001      [Student@123456]"
-Write-Host "     - Normal Attendance (Section CSE-A, 80%)       : 24CSE046      [Student@123456]"
-Write-Host "     - Attendance Defaulter (< 75% warning badge)   : 24CSE058      [Student@123456]"
-Write-Host "     - Grievance Filer   (Resolved ticket trail)    : 24CSE005      [Student@123456]"
+Write-Host "     - High Attendance   (Section CSE-A, 100%)      : 24CSE001"
+Write-Host "     - Normal Attendance (Section CSE-A, 80%)       : 24CSE046"
+Write-Host "     - Attendance Defaulter (< 75% warning badge)   : 24CSE058"
+Write-Host "     - Grievance Filer   (Resolved ticket trail)    : 24CSE005"
 Write-Host "  ------------------------------------------------------------------"
-Write-Host "  Private Excel Credentials Workbook:"
-Write-Host "  C:\Users\aksha\Documents\CampusHarmony_Private\CampusHarmony_Demo_Credentials.xlsx"
+Write-Host "  All individual account passwords are private, unique per account, and recorded in:"
+Write-Host "  CampusHarmony_Private\CampusHarmony_Demo_Credentials.xlsx"
 Write-Host "======================================================================"
 exit 0

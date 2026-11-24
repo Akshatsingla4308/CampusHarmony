@@ -35,7 +35,7 @@ function StudentsPage() {
     phone: "",
     gender: "Male",
     status: "Active",
-    password: "Student@123456",
+    password: "",
   });
 
   const loadData = async () => {
@@ -74,7 +74,7 @@ function StudentsPage() {
       phone: "",
       gender: "Male",
       status: "Active",
-      password: "Student@123456",
+      password: "",
     });
     setIsModalOpen(true);
   };
@@ -129,7 +129,7 @@ function StudentsPage() {
             email: formData.email.trim(),
             phone: formData.phone.trim() || "0000000000",
             gender: formData.gender,
-            password: formData.password || "Student@123456",
+            password: formData.password ? formData.password.trim() : "",
           },
         });
         toast.success(`Student ${formData.name} (${formData.roll}) enrolled and registered.`);
@@ -414,7 +414,7 @@ function StudentsPage() {
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 className="portal-input"
-                placeholder="e.g. Student@123456"
+                placeholder="Enter initial student password (min 12 chars)"
               />
               <p className="text-[11px] text-muted-foreground mt-1">
                 Student uses this password along with their Roll Number to sign in.

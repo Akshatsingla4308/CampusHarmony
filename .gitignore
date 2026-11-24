@@ -68,3 +68,8 @@ frontend/.vinxi/
 private/
 CampusHarmony_Private/
 
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+

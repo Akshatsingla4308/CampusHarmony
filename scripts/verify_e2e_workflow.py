@@ -19,9 +19,36 @@ Automates the full academic workflow:
 import os
 import sys
 import time
+import openpyxl
 from playwright.sync_api import sync_playwright
 
 BASE_URL = "http://localhost:5173"
+EXCEL_PATH = r"C:\Users\aksha\Documents\CampusHarmony_Private\CampusHarmony_Demo_Credentials.xlsx"
+
+# Dynamically load demonstration credentials from private workbook outside Git
+admin_pw = os.environ.get("CAMPUS_ADMIN_PASSWORD", "AdminSecure@2026!")
+teacher_pw = ""
+student_pw = ""
+
+if os.path.exists(EXCEL_PATH):
+    try:
+        wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
+        ws1 = wb["Quick Demo Accounts"]
+        for r in ws1.iter_rows(values_only=True):
+            if r and len(r) >= 4 and r[2] and r[3]:
+                ident = str(r[2]).strip()
+                pw = str(r[3]).strip()
+                if ident == "admin":
+                    admin_pw = pw
+                elif ident == "prof_rao":
+                    teacher_pw = pw
+                elif ident == "24CSE005":
+                    student_pw = pw
+    except Exception as e:
+        print(f"[WARN] Failed to load workbook credentials: {e}")
+
+if not teacher_pw or not student_pw:
+    raise RuntimeError(f"Could not load demo teacher/student passwords from {EXCEL_PATH}. Please ensure seed-demo has been executed.")
 
 print("======================================================================")
 print("  CAMPUS HARMONY — COMPLETE END-TO-END BROWSER WORKFLOW VERIFICATION")
@@ -67,7 +94,7 @@ with sync_playwright() as p:
     page_admin.goto(BASE_URL, wait_until="networkidle")
     page_admin.wait_for_selector("#identifier", timeout=10000)
     page_admin.fill("#identifier", "admin")
-    page_admin.fill("#password", "AdminSecure@2026!")
+    page_admin.fill("#password", admin_pw)
     page_admin.click("button[type='submit']")
 
     page_admin.wait_for_selector("nav, main", timeout=15000)
@@ -130,7 +157,7 @@ with sync_playwright() as p:
     page_teacher.goto(BASE_URL, wait_until="networkidle")
     page_teacher.wait_for_selector("#identifier", timeout=10000)
     page_teacher.fill("#identifier", "prof_rao")
-    page_teacher.fill("#password", "Teacher@123456")
+    page_teacher.fill("#password", teacher_pw)
     page_teacher.click("button[type='submit']")
 
     page_teacher.wait_for_selector("text=Dr. Rajesh Rao", timeout=15000)
@@ -169,7 +196,7 @@ with sync_playwright() as p:
     page_student.goto(BASE_URL, wait_until="networkidle")
     page_student.wait_for_selector("#identifier", timeout=10000)
     page_student.fill("#identifier", "24CSE005")
-    page_student.fill("#password", "Student@123456")
+    page_student.fill("#password", student_pw)
     page_student.click("button[type='submit']")
 
     page_student.wait_for_selector("text=Sai Bhattacharya", timeout=15000)

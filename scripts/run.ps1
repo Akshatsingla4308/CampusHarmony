@@ -175,19 +175,28 @@ foreach ($tool in @('java', 'mvn', 'node', 'npm')) {
     }
 }
 
-# Node.js version verification (TanStack Start requires Node.js >= 20.18; Node.js 22 LTS v22.12.0+ recommended)
+# Node.js version verification (Vite 8 requires Node.js 20.19+ or 22.12+; Node.js 22.12+ recommended for Windows setup)
 $nodeVerOutput = (& node -v 2>&1).Trim().TrimStart('v')
 if ($nodeVerOutput) {
     $nodeParts = $nodeVerOutput.Split('.')
     $nodeMajor = [int]$nodeParts[0]
     $nodeMinor = [int]$nodeParts[1]
-    if ($nodeMajor -lt 20) {
-        [Console]::Error.WriteLine("[ERROR] Node.js version v$nodeVerOutput is unsupported. Node.js 22 LTS (v22.12.0+) is recommended; minimum required is Node.js 20.18.0.")
+
+    $isSupported = $false
+    if ($nodeMajor -eq 20 -and $nodeMinor -ge 19) {
+        $isSupported = $true
+        Write-Host "[INFO] Node.js v$nodeVerOutput detected. (Note: Node.js 22.12+ LTS is recommended for Windows setup and optimal Vite 8 performance)."
+    } elseif ($nodeMajor -ge 22 -and ($nodeMajor -gt 22 -or $nodeMinor -ge 12)) {
+        $isSupported = $true
+        Write-Host "[OK] Node.js v$nodeVerOutput verified (Node.js 22.12+ standard)."
+    }
+
+    if (!$isSupported) {
+        [Console]::Error.WriteLine("[ERROR] Node.js version v$nodeVerOutput is unsupported.")
+        [Console]::Error.WriteLine("Vite 8 and TanStack Start require Node.js 20.19+ or 22.12+.")
+        [Console]::Error.WriteLine("Node.js 22 LTS (v22.12.0+) is recommended for Windows setup.")
+        [Console]::Error.WriteLine("Please upgrade Node.js from https://nodejs.org/")
         exit 1
-    } elseif ($nodeMajor -lt 22 -or ($nodeMajor -eq 22 -and $nodeMinor -lt 12)) {
-        Write-Host "[INFO] Node.js v$nodeVerOutput detected. (Note: TanStack Start recommends Node.js 22 LTS >= v22.12.0 for best performance)."
-    } else {
-        Write-Host "[OK] Node.js v$nodeVerOutput verified (Node 22 LTS standard)."
     }
 }
 Write-Host "[OK] Java JDK, Apache Maven, Node.js, and npm are verified."

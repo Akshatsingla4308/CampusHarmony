@@ -1,12 +1,36 @@
 import os
 import sys
 import time
+import openpyxl
 from playwright.sync_api import sync_playwright
 
 ARTIFACT_DIR = r"C:\Users\aksha\.gemini\antigravity\brain\8369736c-3e71-4dcf-bcc9-356afd214594"
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
 BASE_URL = "http://localhost:5173"
+EXCEL_PATH = r"C:\Users\aksha\Documents\CampusHarmony_Private\CampusHarmony_Demo_Credentials.xlsx"
+
+# Dynamically resolve demo credentials from private workbook outside Git
+admin_pw = os.environ.get("CAMPUS_ADMIN_PASSWORD", "AdminSecure@2026!")
+teacher_pw = ""
+student_pw = ""
+
+if os.path.exists(EXCEL_PATH):
+    try:
+        wb = openpyxl.load_workbook(EXCEL_PATH, data_only=True)
+        ws1 = wb["Quick Demo Accounts"]
+        for r in ws1.iter_rows(values_only=True):
+            if r and len(r) >= 4 and r[2] and r[3]:
+                ident = str(r[2]).strip()
+                pw = str(r[3]).strip()
+                if ident == "admin":
+                    admin_pw = pw
+                elif ident == "prof_rao":
+                    teacher_pw = pw
+                elif ident == "24CSE001":
+                    student_pw = pw
+    except Exception as e:
+        print(f"[WARN] Failed to load workbook credentials: {e}")
 
 VIEWPORTS = {
     "1366px": {"width": 1366, "height": 768},
@@ -75,7 +99,7 @@ with sync_playwright() as p:
         ("/courses", "courses_management"),
         ("/complaints", "grievance_management")
     ]
-    capture_authenticated_screens("admin", "AdminSecure@2026!", admin_screens)
+    capture_authenticated_screens("admin", admin_pw, admin_screens)
 
     # 3. Teacher Screens (Dashboard, Attendance, Marks)
     print("\n--- 3. Capturing Teacher Screens (Dashboard, Attendance, Marks) ---")
@@ -84,14 +108,14 @@ with sync_playwright() as p:
         ("/attendance", "attendance_management"),
         ("/marks", "marks_management")
     ]
-    capture_authenticated_screens("prof_rao", "Teacher@123456", teacher_screens)
+    capture_authenticated_screens("prof_rao", teacher_pw, teacher_screens)
 
     # 4. Student Screens (Dashboard)
     print("\n--- 4. Capturing Student Screens (Dashboard) ---")
     student_screens = [
         ("/", "student_dashboard")
     ]
-    capture_authenticated_screens("24CSE001", "Student@123456", student_screens)
+    capture_authenticated_screens("24CSE001", student_pw, student_screens)
 
     browser.close()
 
