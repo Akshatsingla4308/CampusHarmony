@@ -2,7 +2,7 @@
 # Campus Harmony — React + TanStack SSR / Client Frontend Dockerfile
 # =============================================================================
 
-FROM node:20-alpine
+FROM node:22-alpine
 WORKDIR /app
 
 # Copy dependency manifests

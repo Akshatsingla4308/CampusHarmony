@@ -46,7 +46,7 @@ public class StudentServiceImpl implements StudentService {
         if (teacherId != null && !teacherId.isBlank()) {
             list = studentRepository.findByTeacherId(teacherId.trim());
         } else {
-            list = studentRepository.findByTeacherIdIsNull();
+            list = studentRepository.findAll();
         }
 
         // Apply filters in memory or via repository

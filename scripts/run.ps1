@@ -174,6 +174,22 @@ foreach ($tool in @('java', 'mvn', 'node', 'npm')) {
         exit 1
     }
 }
+
+# Node.js version verification (TanStack Start requires Node.js >= 20.18; Node.js 22 LTS v22.12.0+ recommended)
+$nodeVerOutput = (& node -v 2>&1).Trim().TrimStart('v')
+if ($nodeVerOutput) {
+    $nodeParts = $nodeVerOutput.Split('.')
+    $nodeMajor = [int]$nodeParts[0]
+    $nodeMinor = [int]$nodeParts[1]
+    if ($nodeMajor -lt 20) {
+        [Console]::Error.WriteLine("[ERROR] Node.js version v$nodeVerOutput is unsupported. Node.js 22 LTS (v22.12.0+) is recommended; minimum required is Node.js 20.18.0.")
+        exit 1
+    } elseif ($nodeMajor -lt 22 -or ($nodeMajor -eq 22 -and $nodeMinor -lt 12)) {
+        Write-Host "[INFO] Node.js v$nodeVerOutput detected. (Note: TanStack Start recommends Node.js 22 LTS >= v22.12.0 for best performance)."
+    } else {
+        Write-Host "[OK] Node.js v$nodeVerOutput verified (Node 22 LTS standard)."
+    }
+}
 Write-Host "[OK] Java JDK, Apache Maven, Node.js, and npm are verified."
 
 # Install frontend dependencies if missing

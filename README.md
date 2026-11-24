@@ -150,12 +150,13 @@ CampusHarmony/
 │   ├── Dockerfile                 # Multi-stage Java 17 container build
 │   └── pom.xml                    # Maven build & dependencies definition
 ├── database/                      # Relational schema, routines, and migrations
-│   ├── migrations/                # Migration scripts 006 through 010
+│   ├── migrations/                # Migration scripts 006 through 011
 │   │   ├── 006_academic_foundation.sql
 │   │   ├── 007_evaluations_management.sql
 │   │   ├── 008_timetable_scheduling.sql
 │   │   ├── 009_attendance_analytics.sql
-│   │   └── 010_student_complaints.sql
+│   │   ├── 010_student_complaints.sql
+│   │   └── 011_academic_programs_and_mentors.sql
 │   ├── init_complete.sql          # Unified full database bootstrap script
 │   ├── schema_v5.sql              # Base relational schema
 │   ├── procedures_triggers.sql    # Core stored routines, views, and triggers
@@ -163,7 +164,7 @@ CampusHarmony/
 ├── frontend/                      # React 19 + TanStack single-page / SSR application
 │   ├── src/                       # Components, routes, role layouts, state, and API client
 │   ├── public/                    # Static assets and entrypoints
-│   ├── Dockerfile                 # Node 20 SSR / client container
+│   ├── Dockerfile                 # Node 22 SSR / client container
 │   ├── package.json               # Node.js dependencies & scripts
 │   ├── package-lock.json          # Locked dependency tree
 │   ├── vite.config.js             # TanStack Start / Vite configuration
@@ -171,13 +172,15 @@ CampusHarmony/
 ├── scripts/                       # Automation and helper scripts
 │   ├── init-db.ps1                # Idempotent PowerShell 5.1+ database initializer
 │   ├── run.ps1                    # Safe PowerShell 5.1+ launcher & orchestrator
-│   └── stop.ps1                   # Safe PID-targeted service shutdown utility
+│   ├── stop.ps1                   # Safe PID-targeted service shutdown utility
+│   └── seed-demo.ps1              # High-performance demonstration dataset seeder
 ├── .dockerignore                  # Docker build ignore rules
 ├── .env.example                   # Environment configuration template
 ├── .gitignore                     # Git ignore rules
 ├── compose.yaml                   # Docker Compose specification (canonical V2)
 ├── README.md                      # Complete project documentation
 ├── RUN_CAMPUSHARMONY.bat          # Verified one-click startup script (Docker or Native)
+├── SETUP_DEMO.bat                 # One-click demonstration dataset loader
 └── STOP_CAMPUSHARMONY.bat         # Targeted service shutdown utility (PID tracking)
 ```
 
@@ -192,7 +195,7 @@ CampusHarmony/
 ### Option B: Native Windows Mode
 - **Java Development Kit (JDK)**: JDK 17 or JDK 21 (Eclipse Temurin or Oracle JDK).
 - **Apache Maven**: Version 3.8+ (accessible in system `PATH`).
-- **Node.js & npm**: Node.js 18 LTS or 20 LTS (npm 9+).
+- **Node.js & npm**: Node.js 22 LTS (v22.12.0+) recommended (Node.js 20.18+ supported; npm 9+). Node.js 18 is unsupported due to TanStack Start engine requirements.
 - **MySQL Server**: MySQL Server 8.0+ running on `localhost:3306`.
 - **PowerShell**: Windows PowerShell 5.1 (built into Windows) or PowerShell 7+.
 
@@ -232,6 +235,7 @@ This file executes:
 5. `migrations/008_timetable_scheduling.sql` — Timetable entries & slot views.
 6. `migrations/009_attendance_analytics.sql` — Attendance aggregation & shortfall procedures.
 7. `migrations/010_student_complaints.sql` — Student complaints & activity logging.
+8. `migrations/011_academic_programs_and_mentors.sql` — Academic programs (CSE Core, CSE AI & ML, CSE AI & FT) and faculty section mentorship.
 
 ### Automatic Initialization & Idempotency:
 - In **Docker Compose**: Executed automatically on first container boot via `/docker-entrypoint-initdb.d/`. Persistent volume `campusharmony_mysql_data` preserves data across restarts.
