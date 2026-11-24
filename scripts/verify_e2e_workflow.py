@@ -22,8 +22,14 @@ import time
 import openpyxl
 from playwright.sync_api import sync_playwright
 
+REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if REPO_DIR not in sys.path:
+    sys.path.insert(0, REPO_DIR)
+
+from scripts.credentials_path import get_private_credentials_path
+
 BASE_URL = "http://localhost:5173"
-EXCEL_PATH = r"C:\Users\aksha\Documents\CampusHarmony_Private\CampusHarmony_Demo_Credentials.xlsx"
+EXCEL_PATH = get_private_credentials_path()
 
 # Dynamically load demonstration credentials from private workbook outside Git
 admin_pw = os.environ.get("CAMPUS_ADMIN_PASSWORD", "AdminSecure@2026!")

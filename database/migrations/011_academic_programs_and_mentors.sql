@@ -14,6 +14,14 @@ CREATE TABLE IF NOT EXISTS academic_programs (
         REFERENCES departments(id) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Seed core departments if missing
+INSERT INTO departments (id, name, code) VALUES
+(1, 'Computer Science & Engineering', 'CSE'),
+(2, 'Information Technology', 'IT'),
+(3, 'Electronics & Communication', 'ECE'),
+(4, 'Mechanical Engineering', 'ME')
+ON DUPLICATE KEY UPDATE name=VALUES(name), code=VALUES(code);
+
 -- Seed the 3 B.Tech Programs
 INSERT INTO academic_programs (id, department_id, code, name, degree, duration_years) VALUES
 (1, 1, 'BTECH-CSE-CORE', 'CSE Core', 'B.Tech', 4),

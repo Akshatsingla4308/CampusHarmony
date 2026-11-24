@@ -64,7 +64,10 @@ frontend/.vinxi/
 *.xlsx
 *.xls
 *.csv
-*Credentials*
+*Credentials*.xlsx
+*credentials*.json
+*credentials*.txt
+!scripts/*.py
 private/
 CampusHarmony_Private/
 

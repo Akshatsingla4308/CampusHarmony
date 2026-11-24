@@ -57,6 +57,13 @@ CREATE TABLE departments (
     code VARCHAR(10) NOT NULL UNIQUE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+INSERT INTO departments (id, name, code) VALUES
+(1, 'Computer Science & Engineering', 'CSE'),
+(2, 'Information Technology', 'IT'),
+(3, 'Electronics & Communication', 'ECE'),
+(4, 'Mechanical Engineering', 'ME')
+ON DUPLICATE KEY UPDATE name=VALUES(name), code=VALUES(code);
+
 -- Table 2: subjects (Master lookup for curricular discipline domains)
 CREATE TABLE subjects (
     subject_key VARCHAR(50) PRIMARY KEY,
@@ -1755,9 +1762,32 @@ INSERT INTO academic_programs (id, department_id, code, name, degree, duration_y
 ON DUPLICATE KEY UPDATE name=VALUES(name), degree=VALUES(degree), duration_years=VALUES(duration_years);
 
 -- Safe conditional column additions for sections and students
-ALTER TABLE sections ADD COLUMN IF NOT EXISTS program_id INT NULL;
-ALTER TABLE sections ADD COLUMN IF NOT EXISTS mentor_teacher_id VARCHAR(30) NULL;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS program_id INT NULL;
+SET @col_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sections' AND COLUMN_NAME = 'program_id'
+);
+SET @sql_stmt = IF(@col_exists = 0, 'ALTER TABLE sections ADD COLUMN program_id INT NULL, ADD CONSTRAINT fk_sections_program FOREIGN KEY (program_id) REFERENCES academic_programs(id) ON DELETE SET NULL;', 'SELECT 1;');
+PREPARE stmt FROM @sql_stmt;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'sections' AND COLUMN_NAME = 'mentor_teacher_id'
+);
+SET @sql_stmt = IF(@col_exists = 0, 'ALTER TABLE sections ADD COLUMN mentor_teacher_id VARCHAR(30) NULL, ADD CONSTRAINT fk_sections_mentor FOREIGN KEY (mentor_teacher_id) REFERENCES teachers(id) ON DELETE SET NULL;', 'SELECT 1;');
+PREPARE stmt FROM @sql_stmt;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @col_exists = (
+    SELECT COUNT(*) FROM information_schema.COLUMNS 
+    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'students' AND COLUMN_NAME = 'program_id'
+);
+SET @sql_stmt = IF(@col_exists = 0, 'ALTER TABLE students ADD COLUMN program_id INT NULL, ADD CONSTRAINT fk_students_program FOREIGN KEY (program_id) REFERENCES academic_programs(id) ON DELETE SET NULL;', 'SELECT 1;');
+PREPARE stmt FROM @sql_stmt;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- >>> END FILE: 011_academic_programs_and_mentors.sql <<<
 

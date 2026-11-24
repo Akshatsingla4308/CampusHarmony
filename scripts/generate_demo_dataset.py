@@ -22,11 +22,24 @@ import sys
 import hashlib
 import base64
 import random
+import secrets
+import string
+import argparse
+import concurrent.futures
 from datetime import date, datetime, time, timedelta
 
 # Fix working directory
 REPO_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 os.chdir(REPO_DIR)
+
+if REPO_DIR not in sys.path:
+    sys.path.insert(0, REPO_DIR)
+
+from scripts.credentials_path import get_private_credentials_dir, get_private_credentials_path
+
+parser = argparse.ArgumentParser(description="CampusHarmony Demonstration Dataset Generator")
+parser.add_argument("--database", "-d", default=None, help="Target MySQL database name")
+args, _ = parser.parse_known_args()
 
 # Load .env
 env_file = os.path.join(REPO_DIR, ".env")
@@ -48,36 +61,40 @@ if os.path.exists(env_file):
                     db_user = v
                 elif k == "CAMPUS_ADMIN_PASSWORD":
                     admin_pass = v
+                elif k == "CAMPUS_DB_NAME" and not args.database:
+                    os.environ["CAMPUS_DB_NAME"] = v
 
-print(f"[INFO] Initializing dataset generator (DB User: {db_user})...")
+target_db = args.database or os.environ.get("CAMPUS_DB_NAME") or "campus_harmony"
 
-# 1. PBKDF2 Password Hashing (600,000 iterations HMAC-SHA256)
-def get_pbkdf2_hash(password: str, salt_byte: int) -> str:
-    salt = bytes([salt_byte] * 16)
+print(f"[INFO] Initializing dataset generator (Target DB: {target_db}, DB User: {db_user})...")
+
+# 1. Non-deterministic Cryptographic Password & Salt Provisioning (600,000 PBKDF2 rounds)
+def get_random_pbkdf2_hash(password: str) -> str:
+    """Generates a cryptographically random 16-byte salt and PBKDF2 hash (600,000 rounds HMAC-SHA256)."""
+    salt = secrets.token_bytes(16)
     key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 600000, 32)
     salt_b64 = base64.b64encode(salt).decode("utf-8")
     key_b64 = base64.b64encode(key).decode("utf-8")
     return f"600000${salt_b64}${key_b64}"
 
-def get_pbkdf2_hash_for_account(password: str, identifier: str) -> str:
-    salt = hashlib.sha256(f"CH_SALT_2026_{identifier}".encode("utf-8")).digest()[:16]
-    key = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 600000, 32)
-    salt_b64 = base64.b64encode(salt).decode("utf-8")
-    key_b64 = base64.b64encode(key).decode("utf-8")
-    return f"600000${salt_b64}${key_b64}"
+def generate_secure_teacher_password(login: str) -> str:
+    """Generates a non-deterministic, cryptographically random password (15-16 chars) using CSPRNG."""
+    surname = "".join(c for c in login.replace("prof_", "").capitalize() if c.isalpha())
+    symbols = "!#$%"
+    random_part = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(5))
+    sym = secrets.choice(symbols)
+    return f"Tch@{surname}#{random_part}{sym}26"
 
-def generate_teacher_password(teacher_id: str, login: str) -> str:
-    h = hashlib.sha256(f"CH_TEACHER_KEY_2026_{teacher_id}_{login}".encode()).hexdigest()
-    surname = login.replace("prof_", "").capitalize()
-    return f"Tch@{surname}#{h[:4].upper()}!26"
-
-def generate_student_password(roll: str) -> str:
-    h = hashlib.sha256(f"CH_STUDENT_KEY_2026_{roll}".encode()).hexdigest()
+def generate_secure_student_password(roll: str) -> str:
+    """Generates a non-deterministic, cryptographically random password (16 chars) using CSPRNG."""
     num = roll.replace("24CSE", "")
-    return f"Stu!C5{num}${h[:4].upper()}!26"
+    symbols = "!#$%"
+    random_part = "".join(secrets.choice(string.ascii_letters + string.digits) for _ in range(5))
+    sym = secrets.choice(symbols)
+    return f"Stu!C5{num}${random_part}{sym}26"
 
 ADMIN_PASSWORD = admin_pass
-ADMIN_HASH = get_pbkdf2_hash(ADMIN_PASSWORD, 0x03)
+ADMIN_HASH = get_random_pbkdf2_hash(ADMIN_PASSWORD)
 
 # 2. Programs
 PROGRAMS = [
@@ -196,8 +213,13 @@ TEACHERS = [
 
 # Generate unique credentials and PBKDF2 hashes for each faculty member
 for t in TEACHERS:
-    t["password"] = generate_teacher_password(t["id"], t["login"])
-    t["password_hash"] = get_pbkdf2_hash_for_account(t["password"], t["login"])
+    t["password"] = generate_secure_teacher_password(t["login"])
+
+print(f"[INFO] Computing PBKDF2 password hashes for {len(TEACHERS)} faculty members in parallel...")
+with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, os.cpu_count() or 4)) as executor:
+    tch_hashes = list(executor.map(get_random_pbkdf2_hash, [t["password"] for t in TEACHERS]))
+for t, h in zip(TEACHERS, tch_hashes):
+    t["password_hash"] = h
 
 # 5. Sections Configuration
 SECTIONS = [
@@ -290,8 +312,7 @@ for sec in SECTIONS:
         else:
             att_profile = "Shortage"   # < 75%
             
-        stu_pw = generate_student_password(roll)
-        stu_hash = get_pbkdf2_hash_for_account(stu_pw, roll)
+        stu_pw = generate_secure_student_password(roll)
 
         STUDENTS.append({
             "id": student_id_counter,
@@ -309,10 +330,16 @@ for sec in SECTIONS:
             "mentor_id": sec["mentor_id"],
             "att_profile": att_profile,
             "password": stu_pw,
-            "password_hash": stu_hash
+            "password_hash": None
         })
         student_id_counter += 1
         roll_counter += 1
+
+print(f"[INFO] Computing PBKDF2 password hashes for {len(STUDENTS)} students in parallel...")
+with concurrent.futures.ThreadPoolExecutor(max_workers=min(16, (os.cpu_count() or 4) * 2)) as executor:
+    stu_hashes = list(executor.map(get_random_pbkdf2_hash, [s["password"] for s in STUDENTS]))
+for s, h in zip(STUDENTS, stu_hashes):
+    s["password_hash"] = h
 
 print(f"[INFO] Generated {len(STUDENTS)} students across 5 sections (60 students each).")
 
@@ -804,22 +831,22 @@ with open(SQL_FILE, "w", encoding="utf-8") as f:
     f.write("-- CampusHarmony — Realistic Academic Demonstration Dataset (seed.sql)\n")
     f.write("-- Fully Idempotent Seed File with 300 Students, 15 Teachers, 5 Sections\n")
     f.write("-- =============================================================================\n\n")
-    f.write("USE campus_harmony;\n\n")
+    # Targeted deletion of previous demonstration records only (strictly preserves non-demo user data)
     f.write("SET FOREIGN_KEY_CHECKS = 0;\n")
-    f.write("TRUNCATE TABLE complaint_activity;\n")
-    f.write("TRUNCATE TABLE complaints;\n")
-    f.write("TRUNCATE TABLE assessment_marks;\n")
-    f.write("TRUNCATE TABLE assessments;\n")
-    f.write("TRUNCATE TABLE attendance_records;\n")
-    f.write("TRUNCATE TABLE attendance_sessions;\n")
-    f.write("TRUNCATE TABLE timetable_entries;\n")
-    f.write("TRUNCATE TABLE course_enrollments;\n")
-    f.write("TRUNCATE TABLE course_offerings;\n")
-    f.write("TRUNCATE TABLE section_members;\n")
-    f.write("DELETE FROM accounts WHERE role IN ('teacher', 'student');\n")
-    f.write("TRUNCATE TABLE students;\n")
-    f.write("TRUNCATE TABLE teachers;\n")
-    f.write("TRUNCATE TABLE sections;\n")
+    f.write("DELETE FROM complaint_activity WHERE complaint_id IN (SELECT id FROM complaints WHERE student_id IN (SELECT id FROM students WHERE roll LIKE '24CSE%'));\n")
+    f.write("DELETE FROM complaints WHERE student_id IN (SELECT id FROM students WHERE roll LIKE '24CSE%');\n")
+    f.write("DELETE FROM assessment_marks WHERE assessment_id IN (SELECT id FROM assessments WHERE offering_id IN (SELECT id FROM course_offerings WHERE academic_period_id=1));\n")
+    f.write("DELETE FROM assessments WHERE offering_id IN (SELECT id FROM course_offerings WHERE academic_period_id=1);\n")
+    f.write("DELETE FROM attendance_records WHERE session_id IN (SELECT id FROM attendance_sessions WHERE offering_id IN (SELECT id FROM course_offerings WHERE academic_period_id=1));\n")
+    f.write("DELETE FROM attendance_sessions WHERE offering_id IN (SELECT id FROM course_offerings WHERE academic_period_id=1);\n")
+    f.write("DELETE FROM timetable_entries WHERE section_id IN (SELECT id FROM sections WHERE name IN ('CSE-A','CSE-B','CSE-C','CSE-D','CSE-E'));\n")
+    f.write("DELETE FROM course_enrollments WHERE student_id IN (SELECT id FROM students WHERE roll LIKE '24CSE%');\n")
+    f.write("DELETE FROM section_members WHERE student_id IN (SELECT id FROM students WHERE roll LIKE '24CSE%');\n")
+    f.write("DELETE FROM course_offerings WHERE academic_period_id=1;\n")
+    f.write("DELETE FROM accounts WHERE login LIKE '24CSE%' OR login LIKE 'prof_%';\n")
+    f.write("DELETE FROM students WHERE roll LIKE '24CSE%';\n")
+    f.write("DELETE FROM teachers WHERE id LIKE 'T-10%';\n")
+    f.write("DELETE FROM sections WHERE name IN ('CSE-A','CSE-B','CSE-C','CSE-D','CSE-E');\n")
     f.write("SET FOREIGN_KEY_CHECKS = 1;\n\n")
     
     # 1. Departments
@@ -873,11 +900,11 @@ with open(SQL_FILE, "w", encoding="utf-8") as f:
         sep = "," if i < len(TEACHERS) - 1 else "\nON DUPLICATE KEY UPDATE display_name=VALUES(display_name), password_hash=VALUES(password_hash);\n\n"
         f.write(f"('{t['login']}', 'teacher', '{t['name']}', '{t['password_hash']}', '{t['id']}'){sep}")
 
-    # Ensure admin account
-    f.write("-- Administrator Account\n")
+    # Ensure admin account (Preserve existing administrator password if already configured)
+    f.write("-- Administrator Account (Preserves existing user-managed credentials if already configured)\n")
     f.write(f"INSERT INTO accounts (login, role, display_name, password_hash) VALUES\n")
     f.write(f"('admin', 'admin', 'System Administrator', '{ADMIN_HASH}')\n")
-    f.write("ON DUPLICATE KEY UPDATE display_name=VALUES(display_name), password_hash=VALUES(password_hash);\n\n")
+    f.write("ON DUPLICATE KEY UPDATE display_name=VALUES(display_name);\n\n")
 
     # 7. Sections
     f.write("-- 7. Academic Sections\n")
@@ -982,10 +1009,9 @@ with open(SQL_FILE, "w", encoding="utf-8") as f:
 print(f"[INFO] SQL seed file successfully generated at: {SQL_FILE}")
 
 # 13. Generate Private Excel Credentials Workbook
-# Saved outside git repository to C:\Users\aksha\Documents\CampusHarmony_Private\CampusHarmony_Demo_Credentials.xlsx
-PRIVATE_DIR = r"C:\Users\aksha\Documents\CampusHarmony_Private"
+EXCEL_PATH = get_private_credentials_path()
+PRIVATE_DIR = os.path.dirname(EXCEL_PATH)
 os.makedirs(PRIVATE_DIR, exist_ok=True)
-EXCEL_PATH = os.path.join(PRIVATE_DIR, "CampusHarmony_Demo_Credentials.xlsx")
 
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -1167,10 +1193,10 @@ for col_idx in range(1, len(headers4) + 1):
 
 admin_config = [
     ("Administrator Username", "admin", "Primary system administrator account with total RBAC clearance"),
-    ("Administrator Password", ADMIN_PASSWORD, "Standard demonstration root administrator password"),
+    ("Administrator Password", ADMIN_PASSWORD, "Administrator password configured in .env / process environment"),
     ("Frontend Web Application", "http://localhost:5173", "Unified single-page portal (Admin, Teacher, Student)"),
     ("Backend API Server", "http://localhost:8080", "Java 17 Spring Boot REST application"),
-    ("Database Name", "campus_harmony", "MySQL 8.0/8.4 InnoDB relational database"),
+    ("Database Name", target_db, "Target MySQL 8.0/8.4 relational database"),
     ("Database User", db_user, "Authoritative database user credentials configured in .env"),
     ("Total Programs", "3 Programs", "B.Tech CSE Core (fully populated), CSE AI & ML, CSE AI & FT"),
     ("Total Sections", "5 Sections", "CSE-A, CSE-B, CSE-C, CSE-D, CSE-E (60 students each)"),
@@ -1206,5 +1232,15 @@ for sheet in wb.worksheets:
                 max_len = max(max_len, len(str(cell.value)))
         sheet.column_dimensions[col_letter].width = max(max_len + 4, 12)
 
-wb.save(EXCEL_PATH)
-print(f"[SUCCESS] Private credentials workbook created safely at: {EXCEL_PATH}")
+try:
+    wb.save(EXCEL_PATH)
+    print(f"[SUCCESS] Private credentials workbook created safely at: {EXCEL_PATH}")
+except PermissionError:
+    print(f"[WARNING] Could not overwrite '{EXCEL_PATH}' directly because it is open in another program (e.g., Microsoft Excel).")
+    alt_path = EXCEL_PATH.replace(".xlsx", "_latest.xlsx")
+    try:
+        wb.save(alt_path)
+        print(f"[INFO] Saved credentials copy to: {alt_path}")
+    except Exception as alt_err:
+        print(f"[ERROR] Could not save alternate workbook: {alt_err}")
+    raise
